@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EduManage
 
-## Getting Started
+EduManage is a responsive school-administration dashboard for managing students, teachers, admissions, fees, attendance, examinations, and printable school documents.
 
-First, run the development server:
+> **Project status:** the application is currently a frontend prototype. Most operational data is deterministic demo data, and administrator changes are persisted in the browser with `localStorage`.
+
+## Highlights
+
+- Administrator login experience and dashboard overview
+- Student directory, profiles, attendance, leave, academics, guardians, fees, and account controls
+- Teacher directory, profiles, attendance, leave, class assignments, salary, and account controls
+- Admissions workflow, application status updates, document uploads, and payment receipts
+- Dashboard widgets for attendance, fee collection, notices, events, top performers, and recent admissions
+- School modules for classes, subjects, fees, examinations, results, notices, parents, reports, events, and settings
+- Print-ready tuition receipts, admission receipts, payslips, transfer certificates, and experience certificates
+- Light/dark theme support and reusable accessible UI components
+
+## Tech stack
+
+- [Next.js](https://nextjs.org/) 16 with the App Router
+- React 19 and TypeScript
+- Tailwind CSS 4
+- Zustand for client-side state
+- Lucide icons
+
+## Getting started
+
+### Prerequisites
+
+- Node.js 20.9 or later
+- npm
+
+### Installation
 
 ```bash
+git clone <repository-url>
+cd School-Management
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The login screen is a UI-only demo; submitting it redirects to the dashboard.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Available scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start the local development server. |
+| `npm run build` | Create a production build. |
+| `npm run start` | Run the production build locally. |
+| `npm run lint` | Run ESLint. |
 
-## Learn More
+## Project structure
 
-To learn more about Next.js, take a look at the following resources:
+```text
+src/
+├── app/                 # Routes, layouts, and print views
+├── components/          # Shared UI and dashboard shell components
+├── features/            # Domain modules: admissions, students, teachers, dashboard, auth
+├── hooks/               # Reusable client hooks
+├── lib/                 # API helpers, IndexedDB storage, utilities, and navigation
+├── Providers/           # Application providers
+├── store/               # Global UI and toast state
+└── types/               # Shared TypeScript declarations
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Data and backend integration
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The student, teacher, and admission modules currently use mock data with browser-side persistence for admin edits. Backend hand-off contracts are available here:
 
-## Deploy on Vercel
+- [Students API contract](src/features/students/BACKEND.md)
+- [Teachers API contract](src/features/teachers/BACKEND.md)
+- [Admissions API contract](src/features/admissions/BACKEND.md)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+When connecting a backend, replace the relevant Zustand store actions and demo-data loaders with authenticated API calls. The contracts document expected endpoints, request bodies, permissions, audit logging, and business rules.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Production checklist
+
+- Implement real authentication and role-based access control.
+- Connect stores to a secure API and database.
+- Replace browser-only document/data storage with managed object storage.
+- Add server-side validation, audit logging, monitoring, and automated tests.
+- Configure environment variables for application URL, authentication, database, storage, and messaging providers.
+
+## License
+
+No license has been specified for this repository.
