@@ -1,5 +1,5 @@
 import type { DocumentFile, Gender, PaymentMethod } from "@/features/admissions/types/types";
-import type { AttendanceDay, AttendanceOverride, Shift, StudentAccount } from "@/features/students/types/types";
+import type { AttendanceDay, AttendanceOverride, Shift, StudentAccount, WeekendPlan } from "@/features/students/types/types";
 
 export type EmploymentType = "Permanent" | "Contract" | "Part-time" | "Guest";
 
@@ -153,7 +153,7 @@ export type TeacherAudit = {
   by: string;
 };
 
-export type { AttendanceDay, AttendanceOverride, Shift, StudentAccount as PortalAccount };
+export type { AttendanceDay, AttendanceOverride, Shift, StudentAccount as PortalAccount, WeekendPlan };
 
 export type TeacherFilters = {
   search: string;

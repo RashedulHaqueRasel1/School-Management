@@ -45,6 +45,10 @@ Every write must also add an **audit entry** `{ teacherId, category, action, det
 - `GET /payslips/:slipNo` — printable payslip (also downloadable from the teacher portal).
 - A month becomes "due" after it ends.
 
+## Weekend & swaps
+
+Same contract as students — `GET/PUT /teachers/:id/weekend` (see `features/students/BACKEND.md`). Routine periods are not placed on the teacher's weekly off days.
+
 ## Portal account
 
 Same as students (`features/students/BACKEND.md`):

@@ -1,5 +1,5 @@
-import { localToday } from "../../demoData/profile-data";
-import type { AttendanceDay, AttendanceStatus } from "../../types/types";
+import { localToday, minutesToTime } from "../../demoData/profile-data";
+import type { AttendanceDay, AttendanceOverride, AttendanceStatus, Shift } from "../../types/types";
 
 export const ATTENDANCE_STYLE: Record<AttendanceStatus, { label: string; pill: string; dot: string }> = {
   present: { label: "Present", pill: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" },
@@ -47,3 +47,15 @@ export function formatDuration(minutes: number) {
 
 export const inMonth = (days: AttendanceDay[], year: number, month: number) =>
   days.filter((d) => d.date.startsWith(`${year}-${String(month + 1).padStart(2, "0")}`));
+
+/**
+ * The record saved when an admin marks someone from a register (section, school
+ * or staff register): plausible gate times for present / late, a note otherwise.
+ */
+export function adminMark(status: AttendanceStatus, shift: Pick<Shift, "start" | "end">, date: string): AttendanceOverride {
+  const past = date < localToday();
+  if (status === "present") return { status, checkIn: minutesToTime(shift.start - 8), checkOut: past ? minutesToTime(shift.end + 2) : undefined };
+  if (status === "late") return { status, checkIn: minutesToTime(shift.start + 18), checkOut: past ? minutesToTime(shift.end + 2) : undefined, note: "Marked late by admin" };
+  if (status === "leave") return { status, note: "Leave (marked by admin)" };
+  return { status, note: "Absent (marked by admin)" };
+}

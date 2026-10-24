@@ -135,24 +135,32 @@ export function seedAssignments(teacher: Pick<Teacher, "id" | "subjects">): Teac
 }
 
 /** Class-sections where this teacher is the class teacher (same rule the student profile uses). */
-export function classTeacherOf(teacherId: string) {
-  return CLASS_OPTIONS.flatMap((className) => ["A", "B"].map((section) => ({ className, section }))).filter(
-    (c) => classTeacherFor(c).id === teacherId,
-  );
+/**
+ * Class-sections where this teacher is the class teacher: the standard rule,
+ * unless a section's class teacher was changed in Classes & Sections
+ * (`overrides`: "Class 6::A" → teacher ID).
+ */
+export function classTeacherOf(teacherId: string, overrides: Record<string, string | undefined> = {}) {
+  const standard = CLASS_OPTIONS.flatMap((className) => ["A", "B"].map((section) => ({ className, section })));
+  const extra = Object.keys(overrides)
+    .map((key) => ({ className: key.split("::")[0]!, section: key.split("::")[1]! }))
+    .filter((c) => !standard.some((s) => s.className === c.className && s.section === c.section));
+  return [...standard, ...extra].filter((c) => (overrides[`${c.className}::${c.section}`] ?? classTeacherFor(c).id) === teacherId);
 }
 
 /** Spread the weekly periods of every assignment over the routine grid. */
-export function buildRoutine(teacherId: string, assignments: TeachingAssignment[]): RoutineSlot[] {
+export function buildRoutine(teacherId: string, assignments: TeachingAssignment[], teachingDays: number[] = ROUTINE_DAYS): RoutineSlot[] {
   const random = seeded(hash(`${teacherId}:routine`));
   const slots: RoutineSlot[] = [];
   const taken = new Set<string>();
   for (const assignment of assignments) {
     let placed = 0;
-    let dayIndex = Math.floor(random() * ROUTINE_DAYS.length);
+    if (teachingDays.length === 0) break;
+    let dayIndex = Math.floor(random() * teachingDays.length);
     let guard = 0;
     while (placed < assignment.periodsPerWeek && guard < 200) {
       guard += 1;
-      const day = ROUTINE_DAYS[dayIndex % ROUTINE_DAYS.length]!;
+      const day = teachingDays[dayIndex % teachingDays.length]!;
       const period = 1 + Math.floor(random() * PERIODS_PER_DAY);
       const key = `${day}-${period}`;
       dayIndex += 1;

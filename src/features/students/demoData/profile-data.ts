@@ -16,6 +16,7 @@ import type {
   StudentProfile,
   SubjectInfo,
   Teacher,
+  WeekendPlan,
 } from "../types/types";
 
 /*
@@ -57,6 +58,23 @@ export const SESSION_START = "2026-01-01";
 /** Weekly off days (0 = Sunday … 6 = Saturday). */
 export const WEEKEND_DAYS = [5];
 
+export const DEFAULT_WEEKEND: WeekendPlan = { days: WEEKEND_DAYS, swaps: [] };
+
+export const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/**
+ * Why `date` is a day off for someone with this weekend plan, or null if it's a
+ * working day. One-time swaps win over the weekly pattern. (Holidays are separate.)
+ */
+export function offDayNote(date: string, plan: WeekendPlan = DEFAULT_WEEKEND): string | null {
+  const swappedOff = plan.swaps.find((s) => s.offOn === date);
+  if (swappedOff) return `Swapped day off (works ${swappedOff.workOn.slice(8)}/${swappedOff.workOn.slice(5, 7)})`;
+  if (plan.swaps.some((s) => s.workOn === date)) return null;
+  return plan.days.includes(weekdayOf(date)) ? "Weekend" : null;
+}
+
+export const isOffDay = (date: string, plan?: WeekendPlan) => offDayNote(date, plan) !== null;
+
 /** Standard shifts. Admins can also set a custom shift name and timing per student. */
 export const SHIFTS: Record<string, Shift> = {
   Morning: { name: "Morning", start: 8 * 60, end: 13 * 60 + 30 },
@@ -86,6 +104,17 @@ export const HOLIDAYS: Record<string, string> = {
   "2026-12-16": "Victory Day",
   "2026-12-25": "Christmas Day",
 };
+
+/** School holidays added on the Events & Holidays page (kept in sync by `HolidaySync`). */
+const schoolHolidays: Record<string, string> = {};
+
+export function setSchoolHolidays(map: Record<string, string>) {
+  for (const key of Object.keys(schoolHolidays)) delete schoolHolidays[key];
+  Object.assign(schoolHolidays, map);
+}
+
+/** Why `date` is a holiday (government list or a school holiday), or undefined. */
+export const holidayName = (date: string): string | undefined => HOLIDAYS[date] ?? schoolHolidays[date];
 
 export function minutesToTime(minutes: number) {
   const h = Math.floor(minutes / 60);
@@ -119,7 +148,7 @@ const LEAVE_REASONS = ["Sick leave", "Family programme", "Medical appointment", 
  * Demo gate-scanner attendance from `startDate` to today for any person
  * (students and staff). Deterministic per `seedKey`.
  */
-export function generateAttendance(seedKey: string, startDate: string, shift: Shift): AttendanceDay[] {
+export function generateAttendance(seedKey: string, startDate: string, shift: Shift, weekend: WeekendPlan = DEFAULT_WEEKEND): AttendanceDay[] {
   const random = seeded(hash(seedKey));
   const today = localToday();
   const now = new Date();
@@ -128,12 +157,14 @@ export function generateAttendance(seedKey: string, startDate: string, shift: Sh
   const days: AttendanceDay[] = [];
 
   for (let date = start; date <= today; date = addDaysIso(date, 1)) {
-    if (WEEKEND_DAYS.includes(weekdayOf(date))) {
-      days.push({ date, status: "weekend" });
+    const off = offDayNote(date, weekend);
+    if (off) {
+      days.push({ date, status: "weekend", note: off === "Weekend" ? undefined : off });
       continue;
     }
-    if (HOLIDAYS[date]) {
-      days.push({ date, status: "holiday", note: HOLIDAYS[date] });
+    const holiday = holidayName(date);
+    if (holiday) {
+      days.push({ date, status: "holiday", note: holiday });
       continue;
     }
     const isToday = date === today;
@@ -203,13 +234,13 @@ export const TEACHERS: Teacher[] = TEACHER_ROWS.map(([name, subject, designation
   email: `${name.toLowerCase().split(" ")[0]}.${name.toLowerCase().split(" ").slice(-1)[0]}@edumanage.school`,
 }));
 
-const teacherFor = (subject: string) => TEACHERS.find((t) => t.subject === subject) ?? TEACHERS[11]!;
+export const teacherFor = (subject: string) => TEACHERS.find((t) => t.subject === subject) ?? TEACHERS[11]!;
 
 function religionSubject(religion: string) {
   return religion === "Hinduism" ? "Hindu Religion & Moral Education" : "Islam & Moral Education";
 }
 
-function subjectNamesFor(className: string, religion: string): string[] {
+export function subjectNamesFor(className: string, religion: string): string[] {
   if (["Play", "Nursery", "KG"].includes(className)) return ["Bangla", "English", "Mathematics", "Arts & Crafts", "Early Childhood"];
   const grade = Number(className.replace(/\D/g, ""));
   if (grade <= 5) return ["Bangla", "English", "Mathematics", "Science", "Bangladesh & Global Studies", religionSubject(religion)];
@@ -217,7 +248,7 @@ function subjectNamesFor(className: string, religion: string): string[] {
   return ["Bangla", "English", "Mathematics", "Physics", "Chemistry", "Biology", "Higher Mathematics", "ICT", religionSubject(religion)];
 }
 
-const SUBJECT_CODES: Record<string, string> = {
+export const SUBJECT_CODES: Record<string, string> = {
   Bangla: "BAN",
   English: "ENG",
   Mathematics: "MAT",
@@ -237,13 +268,13 @@ const SUBJECT_CODES: Record<string, string> = {
   "Christian Religion & Moral Education": "CHR",
 };
 
-const RELIGION_SUBJECTS = [
+export const RELIGION_SUBJECTS = [
   "Islam & Moral Education",
   "Hindu Religion & Moral Education",
   "Buddhist Religion & Moral Education",
   "Christian Religion & Moral Education",
 ];
-const FOURTH_SUBJECTS = ["Higher Mathematics", "Agriculture Studies"];
+export const FOURTH_SUBJECTS = ["Higher Mathematics", "Agriculture Studies"];
 
 /** Subjects an admin may swap a given subject for (empty = compulsory, not changeable). */
 export function subjectAlternatives(subject: string) {
@@ -252,7 +283,7 @@ export function subjectAlternatives(subject: string) {
   return [];
 }
 
-function subjectsFor(className: string, religion: string, swaps: Record<string, string> = {}): SubjectInfo[] {
+export function subjectsFor(className: string, religion: string, swaps: Record<string, string> = {}): SubjectInfo[] {
   const grade = Number(className.replace(/\D/g, "")) || 0;
   return subjectNamesFor(className, religion).map((original, i) => ({ name: swaps[original] ?? original, i })).map(({ name, i }) => ({
     code: `${SUBJECT_CODES[name] ?? "GEN"}-${grade || "P"}${String(i + 1).padStart(2, "0")}`,
@@ -378,11 +409,11 @@ function toMinutes(time?: string) {
   return h ? ((Number(h) % 12) + (suffix === "PM" ? 12 : 0)) * 60 + Number(m) : undefined;
 }
 
-/** School days (no weekend / holiday) between two dates, inclusive. */
-export function schoolDaysBetween(from: string, to: string) {
+/** School days (no weekend / holiday) between two dates, inclusive — for this person's weekend plan. */
+export function schoolDaysBetween(from: string, to: string, weekend?: WeekendPlan) {
   const days: string[] = [];
   for (let d = from; d <= to; d = addDaysIso(d, 1)) {
-    if (!WEEKEND_DAYS.includes(weekdayOf(d)) && !HOLIDAYS[d]) days.push(d);
+    if (!isOffDay(d, weekend) && !holidayName(d)) days.push(d);
   }
   return days;
 }
@@ -393,10 +424,11 @@ export function applyAttendanceCorrections(
   startDate: string,
   leaves: { from: string; to: string; label: string }[],
   overrides: Record<string, AttendanceOverride>,
+  weekend?: WeekendPlan,
 ) {
   const byDate = new Map(days.map((d) => [d.date, d]));
   for (const leave of leaves) {
-    for (const date of schoolDaysBetween(leave.from, leave.to)) {
+    for (const date of schoolDaysBetween(leave.from, leave.to, weekend)) {
       if (date >= startDate) byDate.set(date, { date, status: "leave", note: `${leave.label} (approved)` });
     }
   }
@@ -408,7 +440,8 @@ export function applyAttendanceCorrections(
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function guardiansFor(student: Student, admission?: Admission): GuardianInfo[] {
+/** Default guardians: from the admission form, or generated (siblings share parents via the phone number). */
+export function guardiansFor(student: Student, admission?: Admission): GuardianInfo[] {
   if (admission) {
     const list: GuardianInfo[] = [
       { role: "Father", relation: "Father", ...admission.father, isPrimary: admission.primaryContact === "father" },
@@ -419,7 +452,7 @@ function guardiansFor(student: Student, admission?: Admission): GuardianInfo[] {
     }
     return list;
   }
-  const random = seeded(hash(`${student.id}:family`));
+  const random = seeded(hash(`${student.phone}:family`));
   const pick = <T,>(items: T[]) => items[Math.floor(random() * items.length)]!;
   return [
     { role: "Father", relation: "Father", name: student.guardianName, occupation: pick(FATHER_JOBS), phone: student.phone, email: student.email, nid: "", isPrimary: true },
@@ -453,6 +486,7 @@ export type ProfileOverrides = {
   attendance?: Record<string, AttendanceOverride>;
   approvedLeaves?: LeaveRequest[];
   guardians?: GuardianInfo[];
+  weekend?: WeekendPlan;
 };
 
 export function buildStudentProfile(student: Student, allStudents: Student[], admission?: Admission, overrides: ProfileOverrides = {}): StudentProfile {
@@ -472,10 +506,11 @@ export function buildStudentProfile(student: Student, allStudents: Student[], ad
   return {
     shift,
     attendance: applyAttendanceCorrections(
-      generateAttendance(`${student.id}:attendance`, student.enrolledOn, shift),
+      generateAttendance(`${student.id}:attendance`, student.enrolledOn, shift, overrides.weekend),
       student.enrolledOn,
       (overrides.approvedLeaves ?? []).map((l) => ({ from: l.from, to: l.to, label: LEAVE_TYPES[l.type] })),
       overrides.attendance ?? {},
+      overrides.weekend,
     ),
     classTeacher: d.classTeacher ?? classTeacherFor(student),
     session: d.session ?? ACADEMIC_SESSION,

@@ -1,5 +1,6 @@
 "use client";
 
+import { HolidaySync } from "@/features/events/components/HolidaySync";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui.store";
 
@@ -12,15 +13,17 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-canvas">
+      <HolidaySync />
       <Sidebar />
       <div
         className={cn(
           "flex min-h-screen flex-col transition-[padding] duration-300 ease-out",
           collapsed ? "lg:pl-20" : "lg:pl-68",
+          "print:pl-0",
         )}
       >
         <Header />
-        <main className="mx-auto w-full max-w-[1600px] flex-1 p-4 sm:p-6 lg:p-8">
+        <main className="mx-auto w-full max-w-[1600px] flex-1 p-4 sm:p-6 lg:p-8 print:p-0">
           {children}
         </main>
       </div>

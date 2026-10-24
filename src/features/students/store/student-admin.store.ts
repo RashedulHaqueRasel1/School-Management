@@ -19,6 +19,7 @@ import type {
   LeaveRequest,
   StudentAccount,
   StudentDetailsPatch,
+  WeekendPlan,
 } from "../types/types";
 
 type LeaveState = Pick<LeaveRequest, "stage" | "teacherDecision" | "adminDecision">;
@@ -29,6 +30,8 @@ type StudentAdminState = {
   guardians: Record<string, GuardianInfo[]>;
   /** studentId → date → correction */
   attendance: Record<string, Record<string, AttendanceOverride>>;
+  /** Personal weekly off days + one-time weekend swaps. */
+  weekends: Record<string, WeekendPlan>;
   /** studentId → examId → subjectCode → marks */
   marks: Record<string, Record<string, Record<string, number>>>;
   /** studentId → original subject → replacement */
@@ -52,6 +55,7 @@ type StudentAdminState = {
   updateDetails: (studentId: string, patch: StudentDetailsPatch, action: string, category?: AuditCategory) => void;
   setGuardians: (studentId: string, guardians: GuardianInfo[], action: string) => void;
   setAttendance: (studentId: string, date: string, value: AttendanceOverride | null, detail: string) => void;
+  setWeekend: (studentId: string, plan: WeekendPlan, action: string, detail?: string) => void;
   setMarks: (studentId: string, examId: string, examName: string, marks: Record<string, number>) => void;
   swapSubject: (studentId: string, original: string, current: string, replacement: string) => void;
   saveCustomSubject: (studentId: string, subject: SubjectInfo, isNew: boolean) => void;
@@ -89,6 +93,7 @@ export const useStudentAdminStore = create<StudentAdminState>()(
         details: {},
         guardians: {},
         attendance: {},
+        weekends: {},
         marks: {},
         subjectSwaps: {},
         customSubjects: {},
@@ -133,6 +138,10 @@ export const useStudentAdminStore = create<StudentAdminState>()(
               audit: [log(studentId, "attendance", value ? "Attendance corrected" : "Attendance correction removed", detail), ...s.audit],
             };
           }),
+
+        // BACKEND: PUT /students/:id/weekend  { days, swaps }
+        setWeekend: (studentId, plan, action, detail) =>
+          set((s) => ({ weekends: { ...s.weekends, [studentId]: plan }, audit: [log(studentId, "attendance", action, detail), ...s.audit] })),
 
         setMarks: (studentId, examId, examName, marks) =>
           set((s) => ({

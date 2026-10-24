@@ -5,8 +5,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  ArrowLeftRight,
   BookOpen,
+  Cake,
   CalendarCheck,
+  CalendarRange,
+  Clock,
+  Hash,
+  IdCard,
   CalendarDays,
   CalendarPlus,
   ChevronDown,
@@ -31,14 +37,17 @@ import {
 } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ProfileHero, type RibbonTone } from "@/components/shared/ProfileHero";
 import { Badge } from "@/components/ui/badge";
 import { buttonStyles } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { StudentAvatar } from "@/features/admissions/components/StudentAvatar";
-import { formatDate, formatTaka } from "@/features/admissions/utils";
+import { ageFrom, formatDate, formatTaka } from "@/features/admissions/utils";
 import { cn } from "@/lib/utils";
 
+import { DEFAULT_WEEKEND, minutesToTime } from "../../demoData/profile-data";
+import { useStudentAdminStore } from "../../store/student-admin.store";
 import { useStudentAccountSubject } from "../../hooks/use-account-subject";
 import { useStudent } from "../../hooks/use-student";
 import type { Student, StudentAccount, StudentProfile, TransferRecord, TuitionLedger } from "../../types/types";
@@ -50,6 +59,7 @@ import { CollectTuitionDialog } from "./admin/FeeDialogs";
 import { IssueTCDialog, RevokeTCDialog, tcHref } from "./admin/TransferDialogs";
 import { EditPersonalDialog } from "./admin/InfoDialogs";
 import { NewLeaveDialog } from "./admin/LeaveDialogs";
+import { WeekendDialog } from "./admin/WeekendDialog";
 
 type TabDef = { tab?: StudentTab; label: string; icon: LucideIcon };
 
@@ -113,7 +123,7 @@ export function StudentProfileShell({ slug, children }: { slug: string; children
   );
 }
 
-type ManageAction = "personal" | "academic" | "leave" | "fees" | "tc" | "revoke" | "password" | "status";
+type ManageAction = "personal" | "academic" | "leave" | "weekend" | "fees" | "tc" | "revoke" | "password" | "status";
 
 function ProfileHeader({
   student: s,
@@ -131,89 +141,96 @@ function ProfileHeader({
   const router = useRouter();
   const [action, setAction] = useState<ManageAction | null>(null);
   const subject = useStudentAccountSubject(s)!;
+  const weekend = useStudentAdminStore((st) => st.weekends[s.id]) ?? DEFAULT_WEEKEND;
+  const setWeekend = useStudentAdminStore((st) => st.setWeekend);
   const restricted = account.status !== "active";
 
-  const facts: { icon: LucideIcon; label: string }[] = [
-    { icon: GraduationCap, label: `${s.className} · Section ${s.section} · Roll ${s.roll}` },
-    { icon: BookOpen, label: `${s.version} version · ${s.shift} shift` },
-    { icon: CalendarDays, label: `Since ${formatDate(s.enrolledOn)}` },
-    { icon: UserRound, label: `Class teacher: ${profile.classTeacher.name}` },
-  ];
+  const age = ageFrom(s.dateOfBirth);
+  const timing = `${minutesToTime(profile.shift.start)} – ${minutesToTime(profile.shift.end)}`;
+  const ribbon: { label: string; icon: LucideIcon; tone: RibbonTone } = transfer
+    ? { label: "Left", icon: LogOut, tone: "neutral" }
+    : account.status === "suspended"
+      ? { label: "Suspended", icon: ShieldAlert, tone: "warning" }
+      : restricted
+        ? { label: ACCOUNT_STATUS_LABEL[account.status], icon: ShieldAlert, tone: "danger" }
+        : { label: "Active", icon: ShieldCheck, tone: "success" };
 
   return (
-    <Card className="overflow-hidden">
-      <div className="relative h-28 bg-linear-to-r from-indigo-600 via-violet-600 to-indigo-500 sm:h-32">
-        <div aria-hidden className="absolute inset-0 bg-grid-white" />
-        <div aria-hidden className="absolute -right-10 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
-      </div>
-      <div className="relative px-5 pb-5 sm:px-6 sm:pb-6">
-        <div className="-mt-12 flex flex-col gap-4 sm:-mt-14 lg:flex-row lg:items-end lg:justify-between">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <StudentAvatar name={s.name} photo={s.photo} size="xl" className="ring-4 ring-surface shadow-card" />
-            <div className="min-w-0 pb-1 sm:pt-14">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold tracking-tight text-fg sm:text-[28px]">{s.name}</h1>
-                <span className="rounded-md bg-soft px-2 py-0.5 font-mono text-xs font-semibold text-fg-secondary">{s.id}</span>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {transfer ? null : restricted ? (
-                  <Badge tone={account.status === "suspended" ? "warning" : "danger"} dot>
-                    {account.status === "suspended" ? `Suspended until ${formatDate(account.suspendedUntil!)}` : `Portal ${ACCOUNT_STATUS_LABEL[account.status].toLowerCase()}`}
-                  </Badge>
-                ) : (
-                  <Badge tone="success" dot>
-                    Active
-                  </Badge>
-                )}
-                {!transfer && tuition.outstanding > 0 && <Badge tone="danger">Tuition due {formatTaka(tuition.outstanding)}</Badge>}
-                <NewAdmissionBadge student={s} />
-                <FeeBadge student={s} />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2 lg:shrink-0 lg:flex-nowrap lg:pb-1 print:hidden">
-            <a href={`tel:${s.phone}`} className={buttonStyles({ variant: "outline" })} title={`${s.guardianName} · ${s.phone}`}>
+    <>
+      <ProfileHero
+        role="student"
+        avatar={<StudentAvatar name={s.name} photo={s.photo} size="xl" className="rounded-full bg-indigo-50 text-indigo-700" />}
+        name={s.name}
+        code={s.id}
+        ribbon={ribbon}
+        badges={
+          <>
+            {!transfer && restricted && account.status === "suspended" && <Badge tone="warning">Until {formatDate(account.suspendedUntil!)}</Badge>}
+            {!transfer && tuition.outstanding > 0 && <Badge tone="danger">Tuition due {formatTaka(tuition.outstanding)}</Badge>}
+            <NewAdmissionBadge student={s} />
+            <FeeBadge student={s} />
+          </>
+        }
+        actions={
+          <>
+            <a href={`tel:${s.phone}`} className={buttonStyles({ variant: "outline", size: "icon" })} aria-label={`Call guardian ${s.phone}`} title={`${s.guardianName} · ${s.phone}`}>
               <Phone className="h-4 w-4" />
-              Call guardian
             </a>
             <button type="button" onClick={() => window.print()} className={buttonStyles({ variant: "outline", size: "icon" })} aria-label="Print profile" title="Print profile">
               <Printer className="h-4 w-4" />
             </button>
             <ManageMenu onSelect={setAction} admissionHref={s.admissionHref} restricted={restricted} left={Boolean(transfer)} />
-          </div>
-        </div>
-
-        <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-4 text-sm text-fg-muted">
-          {facts.map(({ icon: Icon, label }) => (
-            <span key={label} className="flex items-center gap-1.5">
-              <Icon className="h-4 w-4 text-fg-subtle" />
-              {label}
-            </span>
-          ))}
-        </div>
-
-        {transfer && (
-          <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-line bg-subtle p-4 sm:flex-row sm:items-center">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-fg text-surface">
-              <LogOut className="h-5 w-5" />
-            </span>
-            <p className="flex-1 text-sm text-fg-secondary">
-              <span className="font-semibold text-fg">Left the school on {formatDate(transfer.leavingDate)}</span> · {transfer.reason}
-              {transfer.destinationSchool && ` → ${transfer.destinationSchool}`}. Record archived · TC <span className="font-mono">{transfer.tcNo}</span>.
-            </p>
-            <div className="flex gap-2 print:hidden">
-              <a href={tcHref(transfer.tcNo)} target="_blank" rel="noopener" className={buttonStyles({ size: "sm" })}>
-                <FileBadge2 className="h-3.5 w-3.5" />
-                View TC
-              </a>
-              <button type="button" onClick={() => setAction("revoke")} className={buttonStyles({ size: "sm", variant: "outline" })}>
-                Cancel TC
-              </button>
+          </>
+        }
+        columns={[
+          [
+            { icon: IdCard, label: "Student ID", value: s.id },
+            { icon: GraduationCap, label: "Class", value: `${s.className} · Section ${s.section}` },
+            { icon: Hash, label: "Roll", value: s.roll },
+          ],
+          [
+            { icon: BookOpen, label: "Version", value: `${s.version} version` },
+            { icon: Clock, label: "Shift", value: `${s.shift} · ${timing}` },
+            { icon: CalendarRange, label: "Session", value: profile.session },
+          ],
+          [
+            { icon: CalendarDays, label: "Enrolled on", value: formatDate(s.enrolledOn) },
+            { icon: Cake, label: "Date of birth", value: `${formatDate(s.dateOfBirth)} · ${age} yrs` },
+            { icon: UserRound, label: "Class teacher", value: profile.classTeacher.name },
+          ],
+          [
+            { icon: Users, label: "Guardian", value: `${s.guardianName} (${s.guardianRelation})` },
+            { icon: Phone, label: "Guardian mobile", value: s.phone },
+            {
+              icon: Wallet,
+              label: "Tuition",
+              value: transfer ? "Settled" : tuition.outstanding > 0 ? <span className="text-rose-600">{formatTaka(tuition.outstanding)} due</span> : <span className="text-emerald-600">All paid</span>,
+            },
+          ],
+        ]}
+        footer={
+          transfer && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-fg text-surface">
+                <LogOut className="h-5 w-5" />
+              </span>
+              <p className="flex-1 text-sm text-fg-secondary">
+                <span className="font-semibold text-fg">Left the school on {formatDate(transfer.leavingDate)}</span> · {transfer.reason}
+                {transfer.destinationSchool && ` → ${transfer.destinationSchool}`}. Record archived · TC <span className="font-mono">{transfer.tcNo}</span>.
+              </p>
+              <div className="flex gap-2 print:hidden">
+                <a href={tcHref(transfer.tcNo)} target="_blank" rel="noopener" className={buttonStyles({ size: "sm" })}>
+                  <FileBadge2 className="h-3.5 w-3.5" />
+                  View TC
+                </a>
+                <button type="button" onClick={() => setAction("revoke")} className={buttonStyles({ size: "sm", variant: "outline" })}>
+                  Cancel TC
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )
+        }
+      />
 
       {action === "personal" && (
         <EditPersonalDialog
@@ -228,12 +245,13 @@ function ProfileHeader({
       )}
       {action === "academic" && <EditAcademicDialog student={s} profile={profile} onClose={() => setAction(null)} />}
       {action === "leave" && <NewLeaveDialog student={s} onClose={() => setAction(null)} />}
+      {action === "weekend" && <WeekendDialog name={s.name} plan={weekend} onSave={(plan, act, detail) => setWeekend(s.id, plan, act, detail)} onClose={() => setAction(null)} />}
       {action === "password" && <ResetPasswordDialog subject={subject} account={account} onClose={() => setAction(null)} />}
       {action === "status" && <AccessControlDialog subject={subject} account={account} onClose={() => setAction(null)} />}
       {action === "fees" && <CollectTuitionDialog student={s} ledger={tuition} onClose={() => setAction(null)} />}
       {action === "tc" && <IssueTCDialog student={s} tuition={tuition} onClose={() => setAction(null)} />}
       {action === "revoke" && transfer && <RevokeTCDialog student={s} transfer={transfer} onClose={() => setAction(null)} />}
-    </Card>
+    </>
   );
 }
 
@@ -254,6 +272,7 @@ function ManageMenu({
     { action: "personal", label: "Edit personal info", hint: "Name, birth date, address, health", icon: UserPen },
     { action: "academic", label: "Academic details", hint: "Class, section, roll, shift & timing, version, class teacher", icon: UserCog },
     { action: "leave", label: "Add leave", hint: "On the student's behalf", icon: CalendarPlus },
+    { action: "weekend", label: "Weekend swap", hint: "Change weekly off days or swap a weekend", icon: ArrowLeftRight },
     { action: "fees", label: "Collect tuition", hint: "Record a monthly fee payment", icon: Wallet },
     { action: "password", label: "Reset password", hint: "Generate a new portal password", icon: KeyRound },
     {

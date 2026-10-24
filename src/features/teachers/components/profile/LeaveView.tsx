@@ -36,7 +36,7 @@ const STATUS: Record<TeacherLeave["status"], { label: string; tone: BadgeTone }>
 type Filter = "all" | TeacherLeave["status"];
 
 export function TeacherLeaveView({ slug }: { slug: string }) {
-  const { teacher, teachers, leaves, leaveUsage } = useTeacher(slug);
+  const { teacher, teachers, leaves, leaveUsage, weekend } = useTeacher(slug);
   const [filter, setFilter] = useState<Filter>("all");
   const [deciding, setDeciding] = useState<{ leave: TeacherLeave; approve: boolean } | null>(null);
   const [adding, setAdding] = useState(false);
@@ -104,7 +104,7 @@ export function TeacherLeaveView({ slug }: { slug: string }) {
           <ul className="mt-5 space-y-3">
             {shown.map((l) => {
               const { icon: Icon, accent } = TYPE_ICON[l.type];
-              const days = schoolDaysBetween(l.from, l.to).length;
+              const days = schoolDaysBetween(l.from, l.to, weekend).length;
               return (
                 <li key={l.id} className="rounded-2xl border border-line p-4">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start">

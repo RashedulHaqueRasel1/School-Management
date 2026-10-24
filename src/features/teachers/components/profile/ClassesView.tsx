@@ -28,7 +28,7 @@ const PALETTE = [
 ];
 
 export function ClassesView({ slug }: { slug: string }) {
-  const { teacher, assignments, routine, classTeacherOf } = useTeacher(slug);
+  const { teacher, assignments, routine, classTeacherOf, weekend } = useTeacher(slug);
   const setAssignments = useTeacherAdminStore((s) => s.setAssignments);
   const customised = useTeacherAdminStore((s) => (teacher ? Boolean(s.assignments[teacher.id]) : false));
   const [editing, setEditing] = useState<TeachingAssignment | "new" | null>(null);
@@ -172,7 +172,11 @@ export function ClassesView({ slug }: { slug: string }) {
                     {DAY_NAMES[day]}
                     {day === weekday && <span className="block text-[10px] font-semibold uppercase text-indigo-600">Today</span>}
                   </td>
-                  {Array.from({ length: PERIODS_PER_DAY }, (_, i) => {
+                  {weekend?.days.includes(day) ? (
+                    <td colSpan={PERIODS_PER_DAY} className="px-2 py-2.5">
+                      <div className="rounded-lg bg-sky-50 px-3 py-2 text-center text-xs font-semibold text-sky-700">Weekly off day (personal weekend)</div>
+                    </td>
+                  ) : Array.from({ length: PERIODS_PER_DAY }, (_, i) => {
                     const slot = routine.find((s) => s.day === day && s.period === i + 1);
                     return (
                       <td key={i} className="px-2 py-2.5">

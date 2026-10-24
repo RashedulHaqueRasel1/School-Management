@@ -25,7 +25,9 @@ export function tuitionReceiptHref(receiptNo: string, autoPrint = false) {
 }
 
 /**
- * Collect tuition for one or more months in a single receipt.
+ * Collect tuition for one or more months in a single receipt. The guardian may
+ * pay less than the total: the amount fills the oldest month first and the rest
+ * stays due (the last month reached becomes "partly paid").
  * BACKEND: POST /students/:id/tuition/payments
  *   { allocations: [{ month, amount }], method, transactionId, paidOn, note, notify: ["sms","email"] }
  */
@@ -52,9 +54,22 @@ export function CollectTuitionDialog({
   const [sms, setSms] = useState(Boolean(student.phone));
   const [email, setEmail] = useState(Boolean(student.email));
   const [error, setError] = useState("");
-  const [done, setDone] = useState<TuitionPayment | null>(null);
+  const [done, setDone] = useState<(TuitionPayment & { balance: number }) | null>(null);
+  // Amount received: follows the selected total until the admin types their own.
+  const [amountText, setAmountText] = useState<string | null>(null);
 
-  const total = open.filter((m) => selected.includes(m.month)).reduce((sum, m) => sum + m.due, 0);
+  const chosen = open.filter((m) => selected.includes(m.month));
+  const total = chosen.reduce((sum, m) => sum + m.due, 0);
+  const amount = amountText === null ? total : Number(amountText);
+  const amountInvalid = amountText !== null && (amountText.trim() === "" || !Number.isFinite(amount) || amount <= 0 || amount > total || !Number.isInteger(amount));
+  const paying = amountInvalid ? 0 : amount;
+  const balance = Math.max(0, total - paying);
+  // Oldest month first; the last month reached may be paid in part.
+  const plan = chosen.map((m, i) => {
+    const before = chosen.slice(0, i).reduce((sum, x) => sum + x.due, 0);
+    const pay = Math.max(0, Math.min(m.due, paying - before));
+    return { ...m, pay, remaining: m.due - pay };
+  });
   const methodConfig = PAYMENT_METHODS[method];
 
   function toggle(month: string) {
@@ -64,27 +79,28 @@ export function CollectTuitionDialog({
 
   function save() {
     if (selected.length === 0) return setError("Select at least one month.");
+    if (amountInvalid) return setError(`Enter an amount from ৳1 to ${formatTaka(total)}.`);
     if (methodConfig.needsReference && !transactionId.trim()) return setError(`${methodConfig.referenceLabel} is required.`);
-    const allocations = open.filter((m) => selected.includes(m.month)).map((m) => ({ month: m.month, amount: m.due }));
+    const allocations = plan.filter((m) => m.pay > 0).map((m) => ({ month: m.month, amount: m.pay }));
     const payment: TuitionPayment = {
       id: `tf-${uid()}`,
       receiptNo: `${tuitionReceiptPrefix(student)}R${uid().replace(/-/g, "").slice(0, 6).toUpperCase()}`,
       allocations,
-      total,
+      total: paying,
       method,
       transactionId: transactionId.trim(),
       paidOn,
       receivedBy: CURRENT_USER,
-      note: note.trim(),
+      note: note.trim() || (balance > 0 ? `Part payment — ${formatTaka(balance)} still due` : ""),
     };
     const channels = [sms && "SMS", email && student.email && "email"].filter(Boolean).join(" & ");
     recordTuition(
       student.id,
       payment,
-      `${formatTaka(total)} via ${methodConfig.label} · ${allocations.length} month(s)${channels ? ` · receipt sent by ${channels}` : ""}`,
+      `${formatTaka(paying)} via ${methodConfig.label} · ${allocations.length} month(s)${balance ? ` · ${formatTaka(balance)} left due` : ""}${channels ? ` · receipt sent by ${channels}` : ""}`,
     );
-    toast(`Payment recorded · ${payment.receiptNo}`, { description: `${formatTaka(total)} for ${allocations.length} month(s)` });
-    setDone(payment);
+    toast(`Payment recorded · ${payment.receiptNo}`, { description: `${formatTaka(paying)} received${balance ? ` · ${formatTaka(balance)} still due` : ""}` });
+    setDone({ ...payment, balance });
   }
 
   if (done) {
@@ -117,6 +133,7 @@ export function CollectTuitionDialog({
           <p className="mt-1 text-sm text-fg-muted">
             {done.allocations.map((a) => new Date(`${a.month}-01T00:00:00Z`).toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" })).join(", ")} · {PAYMENT_METHODS[done.method].label}
           </p>
+          {done.balance > 0 && <p className="mt-3 inline-block rounded-lg bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">{formatTaka(done.balance)} still due</p>}
         </div>
         <p className="mt-4 text-sm text-fg-secondary">Print the payment slip for the guardian, or choose “Save as PDF” to share it digitally.</p>
       </Dialog>
@@ -138,13 +155,14 @@ export function CollectTuitionDialog({
       footer={
         <>
           <span className="text-sm text-fg-muted sm:mr-auto sm:self-center">
-            Total: <span className="text-lg font-bold tabular-nums text-fg">{formatTaka(total)}</span>
+            Receiving: <span className="text-lg font-bold tabular-nums text-fg">{formatTaka(paying)}</span>
+            {balance > 0 && paying > 0 && <span className="ml-2 text-xs font-semibold text-amber-600">{formatTaka(balance)} left due</span>}
           </span>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={save} disabled={total === 0}>
-            Record payment
+          <Button onClick={save} disabled={total === 0 || paying === 0}>
+            {balance > 0 && paying > 0 ? "Record part payment" : "Record payment"}
           </Button>
         </>
       }
@@ -185,6 +203,79 @@ export function CollectTuitionDialog({
             </ul>
           )}
         </div>
+
+        {total > 0 && (
+          <div className="rounded-2xl border border-line bg-subtle/60 p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+              <FormField label="Amount received (৳)" required className="flex-1" error={amountInvalid ? `From ৳1 to ${formatTaka(total)}` : undefined}>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={total}
+                  step={1}
+                  value={amountText ?? String(total)}
+                  onChange={(e) => {
+                    setAmountText(e.target.value);
+                    setError("");
+                  }}
+                  invalid={amountInvalid}
+                  className="text-lg font-semibold tabular-nums"
+                  aria-label="Amount received"
+                />
+              </FormField>
+              <div className="flex flex-wrap gap-1.5 sm:pb-1">
+                {[
+                  ["Full", total],
+                  ["Half", Math.round(total / 2)],
+                  ...(chosen.length > 1 ? [["1st month", chosen[0]!.due] as const] : []),
+                ].map(([label, value]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => setAmountText(value === total ? null : String(value))}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                      paying === value ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-line-strong bg-surface text-fg-secondary hover:bg-subtle",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <dl className="mt-4 grid grid-cols-3 divide-x divide-line rounded-xl border border-line bg-surface text-center">
+              {(
+                [
+                  ["Total due", formatTaka(total), "text-fg"],
+                  ["Paying now", formatTaka(paying), "text-emerald-600"],
+                  ["Balance left", formatTaka(balance), balance ? "text-amber-600" : "text-fg-subtle"],
+                ] as const
+              ).map(([label, value, cls]) => (
+                <div key={label} className="px-2 py-2.5">
+                  <dt className="text-[11px] font-medium text-fg-muted">{label}</dt>
+                  <dd className={cn("text-base font-bold tabular-nums", cls)}>{value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            {balance > 0 && paying > 0 && (
+              <ul className="mt-3 space-y-1.5 text-sm">
+                {plan.map((m) => (
+                  <li key={m.month} className="flex items-center justify-between gap-3">
+                    <span className="text-fg-secondary">{m.label}</span>
+                    <span className="tabular-nums">
+                      {m.pay > 0 && <span className="font-semibold text-emerald-600">{formatTaka(m.pay)} paid</span>}
+                      {m.pay > 0 && m.remaining > 0 && <span className="text-fg-subtle"> · </span>}
+                      {m.remaining > 0 && <span className="font-semibold text-amber-600">{formatTaka(m.remaining)} stays due</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         <FieldGrid className="lg:grid-cols-3">
           <FormField label="Method" required>

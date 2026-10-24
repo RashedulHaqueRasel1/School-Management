@@ -67,6 +67,22 @@ export type AttendanceDay = {
   note?: string;
 };
 
+/** One-time swap: the person works on a weekend day and gets another day off instead. */
+export type WeekendSwap = {
+  id: string;
+  /** ISO date — a weekly off day that becomes a working day. */
+  workOn: string;
+  /** ISO date — a working day that becomes the day off. */
+  offOn: string;
+  reason: string;
+  by: string;
+  /** ISO date-time the swap was recorded. */
+  at: string;
+};
+
+/** Personal weekend: weekly off days (0 = Sunday … 6 = Saturday) + one-time swaps. */
+export type WeekendPlan = { days: number[]; swaps: WeekendSwap[] };
+
 export type Shift = {
   name: string;
   /** Minutes from midnight. */

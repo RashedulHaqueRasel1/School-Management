@@ -19,7 +19,7 @@ import { gradeTone } from "./grade-utils";
 import { TodayCard } from "./TodayCard";
 
 export function OverviewView({ slug }: { slug: string }) {
-  const { student, profile, leaveRequests } = useStudent(slug);
+  const { student, profile, leaveRequests, weekend } = useStudent(slug);
   const today = localToday();
   const [month, setMonth] = useState(Number(today.slice(5, 7)) - 1);
   const [year, setYear] = useState(Number(today.slice(0, 4)));
@@ -59,7 +59,7 @@ export function OverviewView({ slug }: { slug: string }) {
       )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <TodayCard days={profile.attendance} shift={profile.shift} />
+        <TodayCard days={profile.attendance} shift={profile.shift} weekend={weekend} />
         <AttendanceCalendar
           days={profile.attendance}
           shift={profile.shift}

@@ -14,18 +14,21 @@ import { useStudent } from "../../hooks/use-student";
 import { useStudentAdminStore } from "../../store/student-admin.store";
 import { EditAttendanceDialog } from "./admin/EditAttendanceDialog";
 import { NewLeaveDialog } from "./admin/LeaveDialogs";
+import { WeekendCard, WeekendDialog } from "./admin/WeekendDialog";
 import { AttendanceCalendar } from "./AttendanceCalendar";
 import { ATTENDANCE_STYLE, MONTHS, formatDuration, inMonth, summarize } from "./attendance-utils";
 
 const STATUS_TONE = { present: "success", late: "warning", absent: "danger", leave: "violet", holiday: "info", weekend: "neutral" } as const;
 
 export function AttendanceView({ slug }: { slug: string }) {
-  const { student, profile } = useStudent(slug);
+  const { student, profile, weekend } = useStudent(slug);
   const today = localToday();
   const [month, setMonth] = useState(Number(today.slice(5, 7)) - 1);
   const [year, setYear] = useState(Number(today.slice(0, 4)));
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [weekendOpen, setWeekendOpen] = useState(false);
+  const setWeekend = useStudentAdminStore((s) => s.setWeekend);
   const corrections = useStudentAdminStore((s) => (student ? s.attendance[student.id] : undefined));
   const setAttendance = useStudentAdminStore((s) => s.setAttendance);
   if (!student || !profile) return null;
@@ -79,6 +82,8 @@ export function AttendanceView({ slug }: { slug: string }) {
           </div>
         ))}
       </Card>
+
+      <WeekendCard plan={weekend} onManage={() => setWeekendOpen(true)} />
 
       <AttendanceCalendar
         days={days}
@@ -234,6 +239,7 @@ export function AttendanceView({ slug }: { slug: string }) {
         />
       )}
       {adding && <NewLeaveDialog student={student} onClose={() => setAdding(false)} />}
+      {weekendOpen && <WeekendDialog name={student.name} plan={weekend} onSave={(plan, action, detail) => setWeekend(student.id, plan, action, detail)} onClose={() => setWeekendOpen(false)} />}
     </div>
   );
 }

@@ -5,12 +5,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowLeft,
+  ArrowLeftRight,
   BookOpen,
   BriefcaseBusiness,
   CalendarCheck,
   CalendarDays,
   CalendarPlus,
   ChevronDown,
+  Clock,
+  IdCard,
+  Network,
+  School,
+  Sun,
+  Users,
   FileBadge2,
   KeyRound,
   LayoutDashboard,
@@ -28,6 +35,7 @@ import {
 } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/EmptyState";
+import { ProfileHero, type RibbonTone } from "@/components/shared/ProfileHero";
 import { Badge } from "@/components/ui/badge";
 import { buttonStyles } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -35,12 +43,14 @@ import { useClickOutside } from "@/hooks/use-click-outside";
 import { StudentAvatar } from "@/features/admissions/components/StudentAvatar";
 import { formatDate } from "@/features/admissions/utils";
 import { ACCOUNT_STATUS_LABEL, AccessControlDialog, ResetPasswordDialog } from "@/features/students/components/profile/admin/AccountDialogs";
+import { WeekendDialog, weeklyOffLabel } from "@/features/students/components/profile/admin/WeekendDialog";
 import { localToday } from "@/features/students/demoData/profile-data";
 import { cn } from "@/lib/utils";
 
 import { useTeacher } from "../../hooks/use-teacher";
+import { useTeacherAdminStore } from "../../store/teacher-admin.store";
 import type { Teacher } from "../../types/types";
-import { teacherHref, yearsOfService, type TeacherTab } from "../../utils";
+import { serviceLength, teacherHref, type TeacherTab } from "../../utils";
 import { NewTeacherLeaveDialog } from "./admin/LeaveDialogs";
 import { RejoinDialog, ReleaseDialog, experienceCertHref } from "./admin/ReleaseDialogs";
 import { PaySalaryDialog } from "./admin/SalaryDialogs";
@@ -57,13 +67,14 @@ const TABS: TabDef[] = [
   { tab: "account", label: "Account", icon: ShieldCheck },
 ];
 
-type ManageAction = "leave" | "salary" | "password" | "status" | "release" | "rejoin";
+type ManageAction = "leave" | "weekend" | "salary" | "password" | "status" | "release" | "rejoin";
 
 /** Header + tab navigation shared by every /teachers/[slug]/* page. */
 export function TeacherProfileShell({ slug, children }: { slug: string; children: React.ReactNode }) {
   const data = useTeacher(slug);
   const { hydrated, teacher } = data;
   const [action, setAction] = useState<ManageAction | null>(null);
+  const setWeekend = useTeacherAdminStore((st) => st.setWeekend);
 
   if (!hydrated) return <ProfileSkeleton />;
   if (!teacher || !data.account || !data.salary || !data.subject || !data.leaveUsage) {
@@ -89,14 +100,17 @@ export function TeacherProfileShell({ slug, children }: { slug: string; children
   const pendingLeave = leaves.filter((l) => l.status === "pending").length;
   const onLeave = leaves.find((l) => l.status === "approved" && l.from <= today && l.to >= today);
   const restricted = account.status !== "active";
-  const service = yearsOfService(teacher, today);
 
-  const facts: { icon: LucideIcon; label: string }[] = [
-    { icon: BriefcaseBusiness, label: `${teacher.designation} · ${teacher.department}` },
-    { icon: BookOpen, label: teacher.subjects.join(", ") },
-    { icon: CalendarDays, label: `Joined ${formatDate(teacher.joinedOn)} · ${service} yr${service === 1 ? "" : "s"}` },
-    { icon: UserRound, label: `${teacher.employmentType} · ${teacher.shift} shift` },
-  ];
+  const headTeacher = data.teachers.find((t) => t.designation === "Head Teacher" && t.status !== "left");
+  const ribbon: { label: string; icon: LucideIcon; tone: RibbonTone } = release
+    ? { label: "Left", icon: LogOut, tone: "neutral" }
+    : onLeave
+      ? { label: "On leave", icon: CalendarPlus, tone: "violet" }
+      : account.status === "suspended"
+        ? { label: "Suspended", icon: ShieldAlert, tone: "warning" }
+        : restricted
+          ? { label: ACCOUNT_STATUS_LABEL[account.status], icon: ShieldAlert, tone: "danger" }
+          : { label: "Active", icon: ShieldCheck, tone: "success" };
 
   return (
     <div className="animate-fade-up space-y-6">
@@ -111,74 +125,68 @@ export function TeacherProfileShell({ slug, children }: { slug: string; children
         </span>
       </div>
 
-      <Card className="overflow-hidden">
-        <div className="relative h-28 bg-linear-to-r from-violet-600 via-indigo-600 to-sky-500 sm:h-32">
-          <div aria-hidden className="absolute inset-0 bg-grid-white" />
-          <div aria-hidden className="absolute -right-10 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
-        </div>
-        <div className="relative px-5 pb-5 sm:px-6 sm:pb-6">
-          <div className="-mt-12 flex flex-col gap-4 sm:-mt-14 lg:flex-row lg:items-end lg:justify-between">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-              <StudentAvatar name={teacher.name} photo={teacher.photo} size="xl" className="ring-4 ring-surface shadow-card" />
-              <div className="min-w-0 pb-1 sm:pt-14">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl font-bold tracking-tight text-fg sm:text-[28px]">{teacher.name}</h1>
-                  <span className="rounded-md bg-soft px-2 py-0.5 font-mono text-xs font-semibold text-fg-secondary">{teacher.id}</span>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {release ? (
-                    <Badge tone="neutral" dot>
-                      Left · {release.type}
-                    </Badge>
-                  ) : onLeave ? (
-                    <Badge tone="violet" dot>
-                      On leave until {formatDate(onLeave.to)}
-                    </Badge>
-                  ) : (
-                    <Badge tone="success" dot>
-                      Active
-                    </Badge>
-                  )}
-                  {!release && restricted && (
-                    <Badge tone={account.status === "suspended" ? "warning" : "danger"}>
-                      {account.status === "suspended" ? `Suspended until ${formatDate(account.suspendedUntil!)}` : `Portal ${ACCOUNT_STATUS_LABEL[account.status].toLowerCase()}`}
-                    </Badge>
-                  )}
-                  {data.classTeacherOf && data.classTeacherOf.length > 0 && (
-                    <Badge tone="info">Class teacher · {data.classTeacherOf.map((c) => `${c.className} ${c.section}`).join(", ")}</Badge>
-                  )}
-                  {!release && salary.pending > 0 && <Badge tone="warning">Salary due</Badge>}
-                  {pendingLeave > 0 && <Badge tone="warning">{pendingLeave} leave pending</Badge>}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2 lg:shrink-0 lg:flex-nowrap lg:pb-1 print:hidden">
-              <a href={`tel:${teacher.phone}`} className={buttonStyles({ variant: "outline", size: "icon" })} aria-label={`Call ${teacher.phone}`} title={teacher.phone}>
-                <Phone className="h-4 w-4" />
-              </a>
-              <a href={`mailto:${teacher.email}`} className={buttonStyles({ variant: "outline", size: "icon" })} aria-label={`Email ${teacher.email}`} title={teacher.email}>
-                <Mail className="h-4 w-4" />
-              </a>
-              <Link href={teacherHref(teacher, "edit")} className={buttonStyles({ variant: "outline" })}>
-                <UserPen className="h-4 w-4" />
-                Edit
-              </Link>
-              <ManageMenu onSelect={setAction} restricted={restricted} left={Boolean(release)} />
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-t border-line pt-4 text-sm text-fg-muted">
-            {facts.map(({ icon: Icon, label }) => (
-              <span key={label} className="flex items-center gap-1.5">
-                <Icon className="h-4 w-4 text-fg-subtle" />
-                {label}
-              </span>
-            ))}
-          </div>
-
-          {release && (
-            <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-line bg-subtle p-4 sm:flex-row sm:items-center">
+      <ProfileHero
+        role="teacher"
+        avatar={<StudentAvatar name={teacher.name} photo={teacher.photo} size="xl" className="rounded-2xl bg-emerald-50 text-emerald-700" />}
+        name={teacher.name}
+        code={teacher.id}
+        ribbon={ribbon}
+        badges={
+          <>
+            {onLeave && !release && <Badge tone="violet">On leave until {formatDate(onLeave.to)}</Badge>}
+            {!release && restricted && (
+              <Badge tone={account.status === "suspended" ? "warning" : "danger"}>
+                {account.status === "suspended" ? `Portal suspended until ${formatDate(account.suspendedUntil!)}` : `Portal ${ACCOUNT_STATUS_LABEL[account.status].toLowerCase()}`}
+              </Badge>
+            )}
+            {!release && salary.pending > 0 && <Badge tone="warning">Salary due</Badge>}
+            {pendingLeave > 0 && <Badge tone="warning">{pendingLeave} leave pending</Badge>}
+          </>
+        }
+        actions={
+          <>
+            <a href={`tel:${teacher.phone}`} className={buttonStyles({ variant: "outline", size: "icon" })} aria-label={`Call ${teacher.phone}`} title={teacher.phone}>
+              <Phone className="h-4 w-4" />
+            </a>
+            <a href={`mailto:${teacher.email}`} className={buttonStyles({ variant: "outline", size: "icon" })} aria-label={`Email ${teacher.email}`} title={teacher.email}>
+              <Mail className="h-4 w-4" />
+            </a>
+            <Link href={teacherHref(teacher, "edit")} className={buttonStyles({ variant: "outline" })}>
+              <UserPen className="h-4 w-4" />
+              Edit
+            </Link>
+            <ManageMenu onSelect={setAction} restricted={restricted} left={Boolean(release)} />
+          </>
+        }
+        columns={[
+          [
+            { icon: IdCard, label: "Staff ID", value: teacher.id },
+            { icon: BriefcaseBusiness, label: "Designation", value: teacher.designation },
+            { icon: Network, label: "Department", value: teacher.department },
+          ],
+          [
+            { icon: Mail, label: "Email", value: teacher.email },
+            { icon: Phone, label: "Mobile", value: teacher.phone },
+            { icon: BookOpen, label: "Subjects", value: teacher.subjects.join(", ") },
+          ],
+          [
+            { icon: FileBadge2, label: "Employment status", value: teacher.employmentType },
+            { icon: CalendarDays, label: "Joining date", value: formatDate(teacher.joinedOn) },
+            { icon: Clock, label: "Service length", value: serviceLength(teacher.joinedOn, release?.lastWorkingDay ?? today) },
+          ],
+          [
+            { icon: Users, label: "Reports to", value: headTeacher && headTeacher.id !== teacher.id ? headTeacher.name : "School management committee" },
+            {
+              icon: School,
+              label: "Class teacher of",
+              value: data.classTeacherOf && data.classTeacherOf.length > 0 ? data.classTeacherOf.map((c) => `${c.className} ${c.section}`).join(", ") : "—",
+            },
+            { icon: Sun, label: "Shift · weekly off", value: `${teacher.shift} · ${data.weekend ? weeklyOffLabel(data.weekend) : "Friday"}` },
+          ],
+        ]}
+        footer={
+          release && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-fg text-surface">
                 <LogOut className="h-5 w-5" />
               </span>
@@ -198,9 +206,9 @@ export function TeacherProfileShell({ slug, children }: { slug: string; children
                 </button>
               </div>
             </div>
-          )}
-        </div>
-      </Card>
+          )
+        }
+      />
 
       <Suspense fallback={<TabsNav teacher={teacher} pathname="" pendingLeave={pendingLeave} />}>
         <ActiveTabsNav teacher={teacher} pendingLeave={pendingLeave} />
@@ -209,6 +217,9 @@ export function TeacherProfileShell({ slug, children }: { slug: string; children
       {children}
 
       {action === "leave" && <NewTeacherLeaveDialog teacher={teacher} teachers={data.teachers} usage={data.leaveUsage} onClose={() => setAction(null)} />}
+      {action === "weekend" && data.weekend && (
+        <WeekendDialog name={teacher.name} plan={data.weekend} onSave={(plan, act, detail) => setWeekend(teacher.id, plan, act, detail)} onClose={() => setAction(null)} />
+      )}
       {action === "salary" && <PaySalaryDialog teacher={teacher} ledger={salary} onClose={() => setAction(null)} />}
       {action === "password" && <ResetPasswordDialog subject={data.subject} account={account} onClose={() => setAction(null)} />}
       {action === "status" && <AccessControlDialog subject={data.subject} account={account} onClose={() => setAction(null)} />}
@@ -223,6 +234,7 @@ function ManageMenu({ onSelect, restricted, left }: { onSelect: (a: ManageAction
   const ref = useClickOutside<HTMLDivElement>(() => setOpen(false), open);
   const items: { action: ManageAction; label: string; hint: string; icon: LucideIcon; danger?: boolean }[] = [
     { action: "leave", label: "Add leave", hint: "On the teacher's behalf, with substitute", icon: CalendarPlus },
+    { action: "weekend", label: "Weekend swap", hint: "Change weekly off days or swap a weekend", icon: ArrowLeftRight },
     { action: "salary", label: "Pay salary", hint: "Record payment and issue a payslip", icon: Wallet },
     { action: "password", label: "Reset password", hint: "Generate a new portal password", icon: KeyRound },
     {

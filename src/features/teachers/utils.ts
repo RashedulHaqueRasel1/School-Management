@@ -54,3 +54,23 @@ export function exportTeachersCsv(list: Teacher[]) {
   link.click();
   URL.revokeObjectURL(url);
 }
+
+/** "12 years 3 months 14 days" between two ISO dates. */
+export function serviceLength(from: string, to: string) {
+  const [fy, fm, fd] = from.split("-").map(Number) as [number, number, number];
+  const [ty, tm, td] = to.split("-").map(Number) as [number, number, number];
+  let years = ty - fy;
+  let months = tm - fm;
+  let days = td - fd;
+  if (days < 0) {
+    months -= 1;
+    days += new Date(Date.UTC(ty, tm - 1, 0)).getUTCDate();
+  }
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+  if (years < 0) return "Not joined yet";
+  const part = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+  return [years && part(years, "year"), months && part(months, "month"), part(days, "day")].filter(Boolean).join(" ");
+}

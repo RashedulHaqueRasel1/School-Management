@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
 
-import { ModulePlaceholder } from "@/components/shared/ModulePlaceholder";
+import { ExamsView } from "@/features/examinations/components/ExamsView";
 
 export const metadata: Metadata = { title: "Examinations" };
 
 export default function ExaminationsPage() {
-  return (
-    <ModulePlaceholder
-      title="Examinations"
-      description="Plan exams, schedules and seating arrangements."
-    />
-  );
+  return <ExamsView />;
 }

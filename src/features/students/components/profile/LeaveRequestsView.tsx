@@ -65,7 +65,7 @@ const FILTERS: { value: Filter; label: string }[] = [
  * admin gives the final decision. Approved days appear on the attendance calendar.
  */
 export function LeaveRequestsView({ slug }: { slug: string }) {
-  const { student, profile, leaveRequests } = useStudent(slug);
+  const { student, profile, leaveRequests, weekend } = useStudent(slug);
   const [filter, setFilter] = useState<Filter>("admin");
   const [deciding, setDeciding] = useState<{ request: LeaveRequest; approve: boolean } | null>(null);
   const [adding, setAdding] = useState(false);
@@ -74,7 +74,7 @@ export function LeaveRequestsView({ slug }: { slug: string }) {
 
   const count = (stage: LeaveStage) => leaveRequests.filter((r) => r.stage === stage).length;
   const visible = filter === "all" ? leaveRequests : leaveRequests.filter((r) => r.stage === filter);
-  const approvedDays = leaveRequests.filter((r) => r.stage === "approved").reduce((sum, r) => sum + schoolDaysBetween(r.from, r.to).length, 0);
+  const approvedDays = leaveRequests.filter((r) => r.stage === "approved").reduce((sum, r) => sum + schoolDaysBetween(r.from, r.to, weekend).length, 0);
 
   const summary = [
     { label: "Needs your approval", value: count("admin"), icon: ShieldCheck, accent: "bg-amber-50 text-amber-600" },

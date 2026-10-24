@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
 
-import { ModulePlaceholder } from "@/components/shared/ModulePlaceholder";
+import { ParentsView } from "@/features/parents/components/ParentsView";
 
 export const metadata: Metadata = { title: "Parents & Guardians" };
 
 export default function ParentsPage() {
-  return (
-    <ModulePlaceholder
-      title="Parents & Guardians"
-      description="Manage parent and guardian contacts linked to students."
-    />
-  );
+  return <ParentsView />;
 }

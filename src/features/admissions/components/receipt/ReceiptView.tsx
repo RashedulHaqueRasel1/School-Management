@@ -2,17 +2,17 @@
 
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeft, FileSearch, GraduationCap, Printer } from "lucide-react";
+import { ArrowLeft, FileSearch, Printer } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { DualCopySlip } from "@/components/shared/DualCopySlip";
 
-import { ACADEMIC_SESSION, PAYMENT_METHODS, SCHOOL_INFO } from "../../constants";
+import { ACADEMIC_SESSION, PAYMENT_METHODS } from "../../constants";
 import { useAdmissionsHydrated, useAdmissionsStore } from "../../store/admissions.store";
 import type { Admission, Payment } from "../../types/types";
-import { admissionHref, amountInWords, contactOf, formatDate, formatDateTime, formatTaka } from "../../utils";
+import { admissionHref, contactOf, formatDate, formatTaka } from "../../utils";
 
 /*
- * Money receipt — designed for A4 printing / "Save as PDF".
+ * Money receipt — office copy + student copy on one A4 page (printing / "Save as PDF").
  * Uses fixed light colours (white / slate) instead of theme tokens so it
  * prints identically when the dashboard is in dark mode.
  * BACKEND: the same layout should be rendered server-side to PDF and attached
@@ -110,168 +110,55 @@ function Receipt({ admission: a, payment: p }: Found) {
   const fullyPaid = balance === 0;
 
   return (
-    <article className="relative mx-auto w-full max-w-[210mm] overflow-hidden rounded-lg bg-white text-slate-900 shadow-2xl print:max-w-none print:rounded-none print:shadow-none">
-      <div className="h-2 bg-linear-to-r from-indigo-600 via-violet-600 to-fuchsia-500 print:[-webkit-print-color-adjust:exact] print:[print-color-adjust:exact]" />
-
-      <div className="p-8 sm:p-12 print:p-0 print:pt-6">
-        {/* School header */}
-        <header className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-indigo-500 to-violet-600 text-white print:[print-color-adjust:exact]">
-              <GraduationCap className="h-7 w-7" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">{SCHOOL_INFO.name}</h1>
-              <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                {SCHOOL_INFO.address}
-                <br />
-                {SCHOOL_INFO.phone} · {SCHOOL_INFO.email}
-                <br />
-                EIIN {SCHOOL_INFO.eiin} · {SCHOOL_INFO.website}
-              </p>
-            </div>
-          </div>
-          <div className="sm:text-right">
-            <p className="inline-block rounded-md bg-slate-900 px-3 py-1 text-xs font-bold uppercase tracking-[0.2em] text-white print:[print-color-adjust:exact]">
-              Money Receipt
-            </p>
-            <dl className="mt-3 space-y-0.5 text-sm">
-              <div className="flex gap-2 sm:justify-end">
-                <dt className="text-slate-500">Receipt no.</dt>
-                <dd className="font-mono font-semibold">{p.receiptNo}</dd>
-              </div>
-              <div className="flex gap-2 sm:justify-end">
-                <dt className="text-slate-500">Date</dt>
-                <dd className="font-semibold">{formatDate(p.paidOn)}</dd>
-              </div>
-            </dl>
-          </div>
-        </header>
-
-        <div className="my-8 h-px bg-slate-200" />
-
-        {/* Parties */}
-        <section className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Received from</p>
-            <p className="mt-2 font-semibold">{contact.name}</p>
-            <p className="text-sm text-slate-600">{contact.relation} of the student</p>
-            <p className="mt-1 text-sm text-slate-600">{contact.phone}</p>
-            {contact.email && <p className="text-sm text-slate-600">{contact.email}</p>}
-          </div>
-          <div className="rounded-xl border border-slate-200 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">Student</p>
-            <p className="mt-2 font-semibold">{a.studentName}</p>
-            <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 text-sm text-slate-600">
-              <dt>Application ID</dt>
-              <dd className="font-mono">{a.id}</dd>
-              <dt>Class</dt>
-              <dd>
-                {a.applyingClass} · {a.version} · {a.shift}
-              </dd>
-              <dt>Session</dt>
-              <dd>{ACADEMIC_SESSION}</dd>
-            </dl>
-          </div>
-        </section>
-
-        {/* Line items */}
-        <section className="mt-8 overflow-hidden rounded-xl border border-slate-200">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500 print:[print-color-adjust:exact]">
-                <th className="px-4 py-3">Description</th>
-                <th className="px-4 py-3">Payment details</th>
-                <th className="px-4 py-3 text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-t border-slate-200 align-top">
-                <td className="px-4 py-4">
-                  <p className="font-semibold">Admission fee</p>
-                  <p className="text-xs text-slate-500">
-                    {a.applyingClass}, session {ACADEMIC_SESSION}
-                    {paidBefore > 0 && " (instalment)"}
-                  </p>
-                </td>
-                <td className="px-4 py-4 text-slate-600">
-                  <p className="font-medium text-slate-900">{method.label}</p>
-                  {p.transactionId && <p className="font-mono text-xs">Ref: {p.transactionId}</p>}
-                  {p.note && <p className="mt-1 text-xs italic">{p.note}</p>}
-                </td>
-                <td className="px-4 py-4 text-right font-semibold tabular-nums">{formatTaka(p.amount)}</td>
-              </tr>
-            </tbody>
-          </table>
-          <div className="border-t border-slate-200 bg-slate-50 px-4 py-3 text-sm print:[print-color-adjust:exact]">
-            <span className="text-slate-500">In words: </span>
-            <span className="font-semibold">{amountInWords(p.amount)}</span>
-          </div>
-        </section>
-
-        {/* Totals + status */}
-        <section className="mt-8 flex flex-col-reverse gap-8 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-center sm:pt-4">
-            <span
-              className={cn(
-                "-rotate-6 rounded-lg border-[3px] px-5 py-2 text-xl font-black uppercase tracking-[0.2em]",
-                fullyPaid ? "border-emerald-600 text-emerald-600" : "border-amber-500 text-amber-600",
-              )}
-            >
-              {fullyPaid ? "Paid" : "Partially paid"}
-            </span>
-          </div>
-          <dl className="w-full space-y-2 text-sm sm:max-w-xs">
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Total admission fee</dt>
-              <dd className="tabular-nums">{formatTaka(a.admissionFee)}</dd>
-            </div>
-            {paidBefore > 0 && (
-              <div className="flex justify-between">
-                <dt className="text-slate-500">Paid earlier</dt>
-                <dd className="tabular-nums">{formatTaka(paidBefore)}</dd>
-              </div>
-            )}
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Paid with this receipt</dt>
-              <dd className="font-semibold tabular-nums">{formatTaka(p.amount)}</dd>
-            </div>
-            <div className="flex justify-between border-t border-slate-200 pt-2">
-              <dt className="font-semibold">Total paid</dt>
-              <dd className="font-bold tabular-nums">{formatTaka(paidToDate)}</dd>
-            </div>
-            <div
-              className={cn(
-                "flex justify-between rounded-lg px-3 py-2 print:[print-color-adjust:exact]",
-                fullyPaid ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800",
-              )}
-            >
-              <dt className="font-semibold">Balance due</dt>
-              <dd className="font-bold tabular-nums">{formatTaka(balance)}</dd>
-            </div>
-          </dl>
-        </section>
-
-        {/* Signatures */}
-        <section className="mt-16 grid grid-cols-2 gap-10 text-sm">
-          <div>
-            <div className="h-px bg-slate-400" />
-            <p className="mt-2 font-semibold">{p.receivedBy}</p>
-            <p className="text-xs text-slate-500">Received by (school office)</p>
-          </div>
-          <div className="text-right">
-            <div className="h-px bg-slate-400" />
-            <p className="mt-2 font-semibold">{contact.name}</p>
-            <p className="text-xs text-slate-500">Guardian&apos;s signature</p>
-          </div>
-        </section>
-
-        <footer className="mt-12 border-t border-dashed border-slate-300 pt-4 text-center text-[11px] leading-relaxed text-slate-400">
-          This is a computer-generated receipt. Please keep it for your records — quote receipt no. {p.receiptNo} for any query.
-          <br />
-          Generated {formatDateTime(new Date().toISOString())} · {SCHOOL_INFO.website}
-        </footer>
-      </div>
-    </article>
+    <DualCopySlip
+      data={{
+        title: "Money Receipt",
+        meta: [
+          ["Receipt no.", p.receiptNo],
+          ["Date", formatDate(p.paidOn)],
+        ],
+        parties: [
+          {
+            label: "Student",
+            name: a.studentName,
+            lines: [<span key="id" className="font-mono">{a.id}</span>, `${a.applyingClass} · ${a.version} · ${a.shift}`, `Session ${ACADEMIC_SESSION}`],
+          },
+          {
+            label: "Received from",
+            name: contact.name,
+            lines: [
+              `${contact.relation} · ${contact.phone}`,
+              <span key="m">
+                {method.label}
+                {p.transactionId && <span className="font-mono"> · {p.transactionId}</span>}
+              </span>,
+            ],
+          },
+        ],
+        items: [
+          {
+            description: <b>Admission fee</b>,
+            detail: `${a.applyingClass}, session ${ACADEMIC_SESSION}${paidBefore > 0 ? " (instalment)" : ""}`,
+            amount: p.amount,
+          },
+        ],
+        totalLabel: "Paid with this receipt",
+        total: p.amount,
+        summary: [
+          { label: "Total admission fee", value: formatTaka(a.admissionFee) },
+          ...(paidBefore > 0 ? [{ label: "Paid earlier", value: formatTaka(paidBefore) }] : []),
+          { label: "Total paid", value: formatTaka(paidToDate), strong: true },
+          { label: "Balance due", value: formatTaka(balance), tone: fullyPaid ? "ok" : "due" },
+        ],
+        stamp: fullyPaid ? { label: "Paid", tone: "ok" } : { label: "Partially paid", tone: "due" },
+        note: p.note || undefined,
+        signatures: [
+          [p.receivedBy, "Received by (school office)"],
+          [contact.name, "Guardian's signature"],
+        ],
+        holderCopy: "Student copy",
+        reference: p.receiptNo,
+      }}
+    />
   );
 }

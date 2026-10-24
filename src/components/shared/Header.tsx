@@ -17,7 +17,7 @@ export function Header() {
   const setMobileOpen = useUIStore((s) => s.setMobileSidebarOpen);
 
   return (
-    <header className="sticky top-0 z-30 flex h-[72px] shrink-0 items-center gap-3 border-b border-line bg-surface/80 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 flex h-[72px] print:hidden shrink-0 items-center gap-3 border-b border-line bg-surface/80 px-4 backdrop-blur-xl sm:px-6 lg:px-8">
       <Button
         variant="ghost"
         size="icon"

@@ -40,6 +40,8 @@ export type Notice = {
   audience: string;
   postedAt: string;
   category: { label: string; tone: BadgeTone };
+  /** Link to the full notice. */
+  href?: string;
 };
 
 export type MonthlyValue = {

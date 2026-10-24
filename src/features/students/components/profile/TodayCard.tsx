@@ -6,14 +6,14 @@ import { Card } from "@/components/ui/card";
 import { formatDate } from "@/features/admissions/utils";
 import { cn } from "@/lib/utils";
 
-import { HOLIDAYS, WEEKEND_DAYS, localToday, weekdayOf } from "../../demoData/profile-data";
-import type { AttendanceDay, Shift } from "../../types/types";
+import { holidayName, localToday, offDayNote } from "../../demoData/profile-data";
+import type { AttendanceDay, Shift, WeekendPlan } from "../../types/types";
 import { ATTENDANCE_STYLE, formatDuration, timeToMinutes } from "./attendance-utils";
 
 const RING = 2 * Math.PI * 44;
 
 /** Live clock + today's punch in/out, with a "Recent check-ins" tab. */
-export function TodayCard({ days, shift }: { days: AttendanceDay[]; shift: Shift }) {
+export function TodayCard({ days, shift, weekend }: { days: AttendanceDay[]; shift: Shift; weekend?: WeekendPlan }) {
   const [tab, setTab] = useState<"today" | "recent">("today");
   const [now, setNow] = useState(() => new Date());
 
@@ -29,7 +29,7 @@ export function TodayCard({ days, shift }: { days: AttendanceDay[]; shift: Shift
   const worked = inMinutes === null ? 0 : (today?.minutes ?? Math.max(0, nowMinutes - inMinutes));
   const progress = Math.min(1, worked / (shift.end - shift.start));
 
-  const offDay = WEEKEND_DAYS.includes(weekdayOf(todayIso)) ? "Weekend" : HOLIDAYS[todayIso];
+  const offDay = offDayNote(todayIso, weekend) ?? holidayName(todayIso);
   const status = today
     ? { label: ATTENDANCE_STYLE[today.status].label, className: STATUS_BAR[today.status] }
     : offDay

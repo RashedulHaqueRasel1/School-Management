@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
 
-import { ModulePlaceholder } from "@/components/shared/ModulePlaceholder";
+import { FeesOverviewView } from "@/features/fees/components/FeesOverviewView";
 
 export const metadata: Metadata = { title: "Fees & Payments" };
 
 export default function FeesPage() {
-  return (
-    <ModulePlaceholder
-      title="Fees & Payments"
-      description="Manage fee structures, invoices and payment collection."
-    />
-  );
+  return <FeesOverviewView />;
 }

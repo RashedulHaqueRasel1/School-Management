@@ -10,6 +10,7 @@ import { formatDate } from "@/features/admissions/utils";
 import { AttendanceCalendar } from "@/features/students/components/profile/AttendanceCalendar";
 import { ATTENDANCE_STYLE, MONTHS, formatDuration, inMonth, summarize } from "@/features/students/components/profile/attendance-utils";
 import { EditAttendanceDialog } from "@/features/students/components/profile/admin/EditAttendanceDialog";
+import { WeekendCard, WeekendDialog } from "@/features/students/components/profile/admin/WeekendDialog";
 import { localToday } from "@/features/students/demoData/profile-data";
 import { cn } from "@/lib/utils";
 
@@ -20,14 +21,16 @@ import { NewTeacherLeaveDialog } from "./admin/LeaveDialogs";
 const STATUS_TONE = { present: "success", late: "warning", absent: "danger", leave: "violet", holiday: "info", weekend: "neutral" } as const;
 
 export function TeacherAttendanceView({ slug }: { slug: string }) {
-  const { teacher, teachers, attendance: days, attendanceFrom, shift, corrections, leaveUsage } = useTeacher(slug);
+  const { teacher, teachers, attendance: days, attendanceFrom, shift, corrections, leaveUsage, weekend } = useTeacher(slug);
   const setAttendance = useTeacherAdminStore((s) => s.setAttendance);
   const today = localToday();
   const [month, setMonth] = useState(Number(today.slice(5, 7)) - 1);
   const [year, setYear] = useState(Number(today.slice(0, 4)));
   const [editing, setEditing] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
-  if (!teacher || !days || !shift || !leaveUsage) return null;
+  const [weekendOpen, setWeekendOpen] = useState(false);
+  const setWeekend = useTeacherAdminStore((s) => s.setWeekend);
+  if (!teacher || !days || !shift || !leaveUsage || !weekend) return null;
   const isCorrected = (date: string) => Boolean(corrections?.[date]);
 
   // This academic year only, for the summary.
@@ -77,6 +80,8 @@ export function TeacherAttendanceView({ slug }: { slug: string }) {
           </div>
         ))}
       </Card>
+
+      <WeekendCard plan={weekend} onManage={() => setWeekendOpen(true)} />
 
       <AttendanceCalendar
         days={days}
@@ -217,6 +222,7 @@ export function TeacherAttendanceView({ slug }: { slug: string }) {
           onClose={() => setEditing(null)}
         />
       )}
+      {weekendOpen && <WeekendDialog name={teacher.name} plan={weekend} onSave={(plan, action, detail) => setWeekend(teacher.id, plan, action, detail)} onClose={() => setWeekendOpen(false)} />}
       {adding && <NewTeacherLeaveDialog teacher={teacher} teachers={teachers} usage={leaveUsage} onClose={() => setAdding(false)} />}
     </div>
   );

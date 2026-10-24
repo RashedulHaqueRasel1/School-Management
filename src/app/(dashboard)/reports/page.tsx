@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
 
-import { ModulePlaceholder } from "@/components/shared/ModulePlaceholder";
+import { ReportsOverviewView } from "@/features/reports/components/ReportsOverviewView";
 
 export const metadata: Metadata = { title: "Reports" };
 
 export default function ReportsPage() {
-  return (
-    <ModulePlaceholder
-      title="Reports"
-      description="Generate academic, attendance and financial reports."
-    />
-  );
+  return <ReportsOverviewView />;
 }

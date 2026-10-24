@@ -10,7 +10,7 @@ import { formatDate, formatTaka } from "@/features/admissions/utils";
 import { AttendanceCalendar } from "@/features/students/components/profile/AttendanceCalendar";
 import { summarize } from "@/features/students/components/profile/attendance-utils";
 import { TodayCard } from "@/features/students/components/profile/TodayCard";
-import { localToday } from "@/features/students/demoData/profile-data";
+import { isOffDay, localToday } from "@/features/students/demoData/profile-data";
 import { cn } from "@/lib/utils";
 
 import { DAY_NAMES, MAX_PERIODS_PER_WEEK, TEACHER_LEAVE_LABEL, periodTime } from "../../demoData/mock-data";
@@ -18,7 +18,7 @@ import { useTeacher } from "../../hooks/use-teacher";
 import { teacherHref } from "../../utils";
 
 export function TeacherOverviewView({ slug }: { slug: string }) {
-  const { teacher, attendance, attendanceFrom, shift, leaves, leaveUsage, assignments, routine, classTeacherOf, salary } = useTeacher(slug);
+  const { teacher, weekend, attendance, attendanceFrom, shift, leaves, leaveUsage, assignments, routine, classTeacherOf, salary } = useTeacher(slug);
   const today = localToday();
   const [month, setMonth] = useState(Number(today.slice(5, 7)) - 1);
   const [year, setYear] = useState(Number(today.slice(0, 4)));
@@ -65,7 +65,7 @@ export function TeacherOverviewView({ slug }: { slug: string }) {
       )}
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <TodayCard days={attendance} shift={shift} />
+        <TodayCard days={attendance} shift={shift} weekend={weekend} />
         <AttendanceCalendar
           days={attendance}
           shift={shift}
@@ -108,7 +108,7 @@ export function TeacherOverviewView({ slug }: { slug: string }) {
             </Link>
           </div>
           {todayClasses.length === 0 ? (
-            <p className="rounded-xl bg-subtle py-10 text-center text-sm text-fg-muted">{weekday === 5 ? "Friday — weekly holiday." : "No classes scheduled today."}</p>
+            <p className="rounded-xl bg-subtle py-10 text-center text-sm text-fg-muted">{weekend && isOffDay(today, weekend) ? "Day off — no classes today." : "No classes scheduled today."}</p>
           ) : (
             <ol className="space-y-2.5">
               {todayClasses.map((s) => (

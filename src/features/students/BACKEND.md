@@ -38,3 +38,19 @@ Every write must also append an **audit entry** (who, what, when) — shown on t
 
 Permissions: all of the above are **admin-only** (RBAC in `proxy.ts` + server checks). Class teachers
 may only decide leave for their own class; students may only create leave requests and read their data.
+
+## Weekend & swaps (students and teachers)
+
+Each person can have their own weekend plan (default: the school's weekly holiday, Friday).
+
+```
+GET /students/:id/weekend   → { days: number[], swaps: WeekendSwap[] }
+PUT /students/:id/weekend   { days, swaps }        (same for /teachers/:id/weekend)
+WeekendSwap = { id, workOn: "YYYY-MM-DD", offOn: "YYYY-MM-DD", reason, by, at }
+```
+
+- `days`: weekly off days, 0 = Sunday … 6 = Saturday (1–3 days).
+- A swap makes `workOn` (a weekly off day) a working day and `offOn` (a working day) the day off.
+  Only future swaps can be added or cancelled; past ones are part of the attendance history.
+- Attendance (weekend rows), leave-day counts and — for teachers — the class routine must use the person's plan.
+- Log every change in the audit trail (category `attendance`).

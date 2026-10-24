@@ -27,7 +27,13 @@ export function LatestNotices({ notices }: { notices: Notice[] }) {
             <li key={n.id} className="relative">
               <span className="absolute -left-[25px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-surface bg-indigo-500 ring-4 ring-indigo-50" />
               <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-semibold leading-snug text-fg">{n.title}</p>
+                {n.href ? (
+                  <Link href={n.href} className="text-sm font-semibold leading-snug text-fg hover:text-indigo-600">
+                    {n.title}
+                  </Link>
+                ) : (
+                  <p className="text-sm font-semibold leading-snug text-fg">{n.title}</p>
+                )}
                 <Badge tone={n.category.tone} className="shrink-0">
                   {n.category.label}
                 </Badge>

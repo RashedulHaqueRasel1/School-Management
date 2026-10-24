@@ -17,6 +17,7 @@ import type {
   TeacherInput,
   TeacherLeave,
   TeachingAssignment,
+  WeekendPlan,
 } from "../types/types";
 
 type LeaveState = Pick<TeacherLeave, "status" | "decision" | "substitute">;
@@ -27,6 +28,8 @@ type TeacherAdminState = {
   /** Edits to any teacher, by ID. */
   details: Record<string, Partial<TeacherInput>>;
   attendance: Record<string, Record<string, AttendanceOverride>>;
+  /** Personal weekly off days + one-time weekend swaps. */
+  weekends: Record<string, WeekendPlan>;
   leaveRequests: TeacherLeave[];
   leaveState: Record<string, LeaveState>;
   /** Replaces the teacher's class assignments when set. */
@@ -40,6 +43,7 @@ type TeacherAdminState = {
   addTeacher: (input: TeacherInput, ids: string[]) => Teacher;
   updateTeacher: (id: string, patch: Partial<TeacherInput>, action: string) => void;
   setAttendance: (id: string, date: string, value: AttendanceOverride | null, detail: string) => void;
+  setWeekend: (id: string, plan: WeekendPlan, action: string, detail?: string) => void;
   addLeave: (leave: TeacherLeave) => void;
   decideLeave: (leave: TeacherLeave, approved: boolean, note: string, substitute?: string) => void;
   setAssignments: (id: string, assignments: TeachingAssignment[], action: string, detail?: string) => void;
@@ -71,6 +75,7 @@ export const useTeacherAdminStore = create<TeacherAdminState>()(
         added: [],
         details: {},
         attendance: {},
+        weekends: {},
         leaveRequests: [],
         leaveState: {},
         assignments: {},
@@ -102,6 +107,10 @@ export const useTeacherAdminStore = create<TeacherAdminState>()(
               audit: [log(id, "attendance", value ? "Attendance corrected" : "Attendance correction removed", detail), ...s.audit],
             };
           }),
+
+        // BACKEND: PUT /teachers/:id/weekend  { days, swaps }
+        setWeekend: (id, plan, action, detail) =>
+          set((s) => ({ weekends: { ...s.weekends, [id]: plan }, audit: [log(id, "attendance", action, detail), ...s.audit] })),
 
         addLeave: (leave) =>
           set((s) => ({ leaveRequests: [leave, ...s.leaveRequests], audit: [log(leave.teacherId, "leave", "Leave added by admin", `${leave.from} → ${leave.to}`), ...s.audit] })),

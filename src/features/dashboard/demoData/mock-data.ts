@@ -13,9 +13,7 @@ import type {
   Admission,
   AttendanceSummary,
   MonthlyValue,
-  Notice,
   QuickAction,
-  SchoolEvent,
   Stat,
   TopPerformer,
 } from "../types/types";
@@ -104,20 +102,6 @@ export const recentAdmissions: Admission[] = [
   { id: "ADM-1038", name: "Sadia Islam", className: "Class 1 - B", guardian: "Rafiqul Islam", date: "Oct 18, 2026", status: { label: "Approved", tone: "success" } },
 ];
 
-export const upcomingEvents: SchoolEvent[] = [
-  { id: "e1", title: "Half-Yearly Examinations", time: "9:00 AM · All classes", day: "27", month: "Oct", type: "Exam" },
-  { id: "e2", title: "Parent–Teacher Meeting", time: "10:30 AM · Main Hall", day: "02", month: "Nov", type: "Event" },
-  { id: "e3", title: "Annual Sports Day", time: "8:00 AM · Playground", day: "12", month: "Nov", type: "Event" },
-  { id: "e4", title: "Victory Day", time: "School closed", day: "16", month: "Dec", type: "Holiday" },
-];
-
-export const latestNotices: Notice[] = [
-  { id: "n1", title: "Half-yearly exam routine published", audience: "Students & Parents", postedAt: "2h ago", category: { label: "Exam", tone: "warning" } },
-  { id: "n2", title: "Staff meeting on Thursday at 2:00 PM", audience: "Teachers", postedAt: "Yesterday", category: { label: "Staff", tone: "info" } },
-  { id: "n3", title: "Tuition fee deadline extended to Oct 31", audience: "Parents", postedAt: "2 days ago", category: { label: "Finance", tone: "success" } },
-  { id: "n4", title: "Winter uniform mandatory from Nov 15", audience: "All", postedAt: "3 days ago", category: { label: "General", tone: "neutral" } },
-];
-
 export const topPerformers: TopPerformer[] = [
   { name: "Raihan Kabir", className: "Class 10 - A", gpa: 5.0 },
   { name: "Mehjabin Sultana", className: "Class 10 - B", gpa: 4.94 },
@@ -130,6 +114,6 @@ export const quickActions: QuickAction[] = [
   { label: "Take Attendance", href: "/attendance", icon: CalendarCheck, accent: "bg-emerald-50 text-emerald-600" },
   { label: "Collect Fee", href: "/fees", icon: Wallet, accent: "bg-amber-50 text-amber-600" },
   { label: "Create Exam", href: "/examinations", icon: ClipboardList, accent: "bg-sky-50 text-sky-600" },
-  { label: "Post Notice", href: "/notices", icon: Megaphone, accent: "bg-rose-50 text-rose-600" },
+  { label: "Post Notice", href: "/notices/new", icon: Megaphone, accent: "bg-rose-50 text-rose-600" },
   { label: "Reports", href: "/reports", icon: BarChart3, accent: "bg-violet-50 text-violet-600" },
 ];
