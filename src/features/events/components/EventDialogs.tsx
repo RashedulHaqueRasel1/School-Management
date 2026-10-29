@@ -340,6 +340,7 @@ function EventViewDialog({ item: e, onClose, onEdit }: { item: CalendarItem; onC
         open={confirm}
         onClose={() => setConfirm(false)}
         title={`Delete ${e.title}?`}
+        typeToConfirm={e.id}
         description={e.closed ? "These days become school days again — attendance and exam routines update." : "It is removed from the calendar and the portals."}
         onConfirm={() => {
           remove(e.id);

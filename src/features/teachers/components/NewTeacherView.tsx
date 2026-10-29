@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { localToday } from "@/features/students/demoData/profile-data";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { defaultSalarySettings } from "../demoData/mock-data";
@@ -35,7 +36,13 @@ export function NewTeacherView() {
       <TeacherForm
         submitLabel="Add teacher"
         cancelHref="/teachers"
-        onSubmit={(input, extras) => {
+        onSubmit={async (input, extras) => {
+          const ok = await confirmAction({
+            title: "Add this teacher?",
+            description: `${input.name} · ${input.designation}, ${input.department}.${extras.createAccount ? ` Portal login is sent by SMS to ${input.phone}.` : ""}`,
+            confirmLabel: "Add teacher",
+          });
+          if (!ok) return;
           const created = addTeacher(input, teachers.map((t) => t.id));
           if (extras.basicSalary) setSalarySettings(created.id, { ...defaultSalarySettings(created), basic: extras.basicSalary });
           const now = new Date().toISOString();

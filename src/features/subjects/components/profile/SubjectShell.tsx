@@ -35,6 +35,7 @@ import { buttonStyles } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { classRange } from "../../demoData/catalog";
@@ -123,7 +124,8 @@ export function SubjectShell({ slug, children }: { slug: string; children: React
             <ManageMenu
               archived={subject.archived}
               onArchive={() => setConfirmArchive(true)}
-              onRestore={() => {
+              onRestore={async () => {
+                if (!(await confirmAction({ title: "Restore this subject?", description: `${subject.name} appears in the subject list and pickers again.`, confirmLabel: "Restore" }))) return;
                 restore(subject.name);
                 toast("Subject restored");
               }}

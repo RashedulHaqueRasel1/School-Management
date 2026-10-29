@@ -12,6 +12,7 @@ import { StudentAvatar } from "@/features/admissions/components/StudentAvatar";
 import { formatDate, normalizePhone } from "@/features/admissions/utils";
 import { studentHref } from "@/features/students/utils";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useGuardianActions } from "../../hooks/use-guardian-actions";
@@ -102,7 +103,13 @@ export function ChildrenView({ slug }: { slug: string }) {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => {
+                        onClick={async () => {
+                          const ok = await confirmAction({
+                            title: "Make primary contact?",
+                            description: `${parent.name} will receive ${l.student.name}'s attendance alerts, results and fee reminders instead of the current primary contact.`,
+                            confirmLabel: "Make primary",
+                          });
+                          if (!ok) return;
                           actions.makePrimary(parent, l);
                           toast("Primary contact changed", { description: `${l.student.name} → ${parent.name}` });
                         }}

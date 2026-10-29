@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Archive,
   ArchiveRestore,
@@ -22,6 +22,7 @@ import {
   Phone,
   Settings2,
   ShieldCheck,
+  Trash2,
   UserPlus,
   UserRound,
   Users,
@@ -38,6 +39,7 @@ import { useClickOutside } from "@/hooks/use-click-outside";
 import { ACADEMIC_SESSION } from "@/features/admissions/constants";
 import { SHIFTS, localToday, minutesToTime } from "@/features/students/demoData/profile-data";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { sectionCode, sectionLabel } from "../../demoData/mock-data";
@@ -59,7 +61,7 @@ const TABS: TabDef[] = [
   { tab: "settings", label: "Settings", icon: Settings2 },
 ];
 
-type ManageAction = "teacher" | "rolls" | "archive" | "restore";
+type ManageAction = "teacher" | "rolls" | "archive" | "restore" | "delete";
 
 /** Header + tabs shared by every /classes/[slug]/* page. */
 export function SectionShell({ slug, children }: { slug: string; children: React.ReactNode }) {
@@ -68,6 +70,8 @@ export function SectionShell({ slug, children }: { slug: string; children: React
   const actions = useSectionActions();
   const archive = useClassAdminStore((s) => s.archive);
   const restore = useClassAdminStore((s) => s.restore);
+  const removeSection = useClassAdminStore((s) => s.removeSection);
+  const router = useRouter();
   const [action, setAction] = useState<ManageAction | null>(null);
 
   if (!hydrated) return <Skeleton />;
@@ -144,8 +148,11 @@ export function SectionShell({ slug, children }: { slug: string; children: React
             </Link>
             <ManageMenu
               archived={section.archived}
-              onSelect={(a) => {
+              custom={section.custom}
+              onSelect={async (a) => {
                 if (a !== "restore") return setAction(a);
+                const ok = await confirmAction({ title: "Restore this section?", description: `${sectionLabel(section.className, section.section)} will appear in the class list and section pickers again.`, confirmLabel: "Restore" });
+                if (!ok) return;
                 restore(section.key);
                 toast("Section restored");
               }}
@@ -200,6 +207,7 @@ export function SectionShell({ slug, children }: { slug: string; children: React
         title="Re-assign roll numbers?"
         description={`Roll 1–${section.students.length} in alphabetical order. Students and guardians see the new roll on their profiles.`}
         confirmLabel="Re-assign"
+        tone="primary"
         onConfirm={() => {
           actions.renumber(section, "name");
           toast("Roll numbers re-assigned");
@@ -216,6 +224,7 @@ export function SectionShell({ slug, children }: { slug: string; children: React
             : "The section is hidden from lists and pickers. History is kept and it can be restored."
         }
         confirmLabel={section.students.length ? "OK" : "Archive"}
+        tone={section.students.length ? "primary" : "danger"}
         onConfirm={() => {
           if (section.students.length === 0) {
             archive(section.key, "Archived by admin");
@@ -224,11 +233,33 @@ export function SectionShell({ slug, children }: { slug: string; children: React
           setAction(null);
         }}
       />
+      <ConfirmDialog
+        open={action === "delete"}
+        onClose={() => setAction(null)}
+        title={section.students.length ? "Move students out first" : "Delete this section?"}
+        description={
+          section.students.length
+            ? `${section.students.length} student(s) are still in ${sectionLabel(section.className, section.section)}. Move them to another section from the Students tab, then delete.`
+            : `${sectionLabel(section.className, section.section)} — its room, settings and routine edits are removed for good. Use Archive instead if you may need it again.`
+        }
+        confirmLabel={section.students.length ? "OK" : "Delete section"}
+        tone={section.students.length ? "primary" : "danger"}
+        typeToConfirm={section.students.length ? undefined : deleteName(section)}
+        onConfirm={() => {
+          if (section.students.length) return setAction(null);
+          removeSection(section.key);
+          toast("Section deleted", { description: sectionLabel(section.className, section.section) });
+          router.push("/classes");
+        }}
+      />
     </div>
   );
 }
 
-function ManageMenu({ onSelect, archived }: { onSelect: (a: ManageAction) => void; archived: boolean }) {
+/** What the admin types to delete a section, e.g. "Class 6 C". */
+export const deleteName = (s: Pick<ClassSection, "className" | "section">) => `${s.className} ${s.section}`;
+
+function ManageMenu({ onSelect, archived, custom }: { onSelect: (a: ManageAction) => void; archived: boolean; custom: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useClickOutside<HTMLDivElement>(() => setOpen(false), open);
   const items: { action: ManageAction; label: string; hint: string; icon: LucideIcon; danger?: boolean }[] = [
@@ -237,6 +268,7 @@ function ManageMenu({ onSelect, archived }: { onSelect: (a: ManageAction) => voi
     archived
       ? { action: "restore", label: "Restore section", hint: "Show it in lists again", icon: ArchiveRestore }
       : { action: "archive", label: "Archive section", hint: "Only when it has no students", icon: Archive, danger: true },
+    ...(custom ? [{ action: "delete" as const, label: "Delete section", hint: "Added by mistake? Remove it for good", icon: Trash2, danger: true }] : []),
   ];
   return (
     <div ref={ref} className="relative">

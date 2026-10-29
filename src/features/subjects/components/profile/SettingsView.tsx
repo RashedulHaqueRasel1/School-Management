@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CLASS_OPTIONS } from "@/features/admissions/constants";
 import { formatDateTime } from "@/features/admissions/utils";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useSubject } from "../../hooks/use-subject";
@@ -56,10 +57,11 @@ function Form({ slug }: { slug: string }) {
   const entries = category === "all" ? audit : audit.filter((a) => a.category === category);
   const toggleClass = (c: string) => setV((x) => ({ ...x, classes: x.classes.includes(c) ? x.classes.filter((y) => y !== c) : [...x.classes, c] }));
 
-  function save() {
+  async function save() {
     if (!v.code.trim()) return setError("Enter the code.");
     if (v.passMarks <= 0 || v.passMarks >= v.fullMarks) return setError("Pass marks must be between 1 and the full marks.");
     if (v.classes.length === 0) return setError("Pick at least one class.");
+    if (!(await confirmAction({ title: "Save subject settings?", description: `Changes: ${changed.join(", ")}.`, confirmLabel: "Save changes" }))) return;
     saveSettings(subject!.name, { ...v, code: v.code.trim().toUpperCase() }, changed.map((k) => `${k}: ${String(subject![k])} → ${String(v[k])}`).join(" · "));
     toast("Subject updated", { description: changed.join(", ") });
   }

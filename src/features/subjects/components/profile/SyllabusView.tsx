@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { uid } from "@/features/admissions/utils";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useSubject } from "../../hooks/use-subject";
@@ -81,7 +82,8 @@ export function SubjectSyllabusView({ slug }: { slug: string }) {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => {
+              onClick={async () => {
+                if (!(await confirmAction({ title: "Reset the syllabus?", description: `${subject.name} · ${current} goes back to the default plan. Your topic edits are lost.`, confirmLabel: "Reset", tone: "danger" }))) return;
                 resetSyllabus(subject.name, current);
                 toast("Syllabus reset to the default plan");
               }}
@@ -108,9 +110,18 @@ export function SubjectSyllabusView({ slug }: { slug: string }) {
                   key={`${t.id}-${t.title}`}
                   defaultValue={t.title}
                   aria-label="Topic title"
-                  onBlur={(e) => {
-                    const title = e.currentTarget.value.trim();
-                    if (!title || title === t.title) return;
+                  onBlur={async (e) => {
+                    const input = e.currentTarget;
+                    const title = input.value.trim();
+                    if (!title || title === t.title) {
+                      input.value = t.title;
+                      return;
+                    }
+                    const ok = await confirmAction({ title: "Rename topic?", description: `“${t.title}” → “${title}”`, confirmLabel: "Rename", rememberKey: `syllabus:${subject.name}` });
+                    if (!ok) {
+                      input.value = t.title;
+                      return;
+                    }
                     save(
                       topics.map((x) => (x.id === t.id ? { ...x, title } : x)),
                       "Topic renamed",
@@ -121,14 +132,35 @@ export function SubjectSyllabusView({ slug }: { slug: string }) {
                   className={cn("min-w-0 flex-1 rounded-md bg-transparent px-1 py-0.5 text-sm focus:bg-subtle focus:outline-none", t.status === "completed" ? "text-fg-muted line-through decoration-fg-subtle/50" : "text-fg")}
                 />
                 {t.month && <span className="hidden text-xs text-fg-subtle sm:inline">{monthLabel(t.month)}</span>}
-                <button type="button" onClick={() => save(topics.map((x) => (x.id === t.id ? { ...x, status: s.next } : x)), `Topic ${STATUS[s.next].label.toLowerCase()}`, t.title)} title="Change status">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const ok = await confirmAction({
+                      title: `Mark as ${STATUS[s.next].label.toLowerCase()}?`,
+                      description: `${t.title} · ${subject.name}, ${current}`,
+                      confirmLabel: `Mark ${STATUS[s.next].label.toLowerCase()}`,
+                      rememberKey: `syllabus:${subject.name}`,
+                    });
+                    if (ok) save(topics.map((x) => (x.id === t.id ? { ...x, status: s.next } : x)), `Topic ${STATUS[s.next].label.toLowerCase()}`, t.title);
+                  }}
+                  title="Change status"
+                >
                   <Badge tone={s.tone} dot>
                     {s.label}
                   </Badge>
                 </button>
                 <button
                   type="button"
-                  onClick={() => save(topics.filter((x) => x.id !== t.id), "Topic removed", t.title)}
+                  onClick={async () => {
+                    const ok = await confirmAction({
+                      title: "Delete this topic?",
+                      description: `${t.title} is removed from the ${subject.name} syllabus for ${current}.`,
+                      confirmLabel: "Delete topic",
+                      tone: "danger",
+                      typeToConfirm: t.title.replace(/^\d+\.\s*/, ""),
+                    });
+                    if (ok) save(topics.filter((x) => x.id !== t.id), "Topic removed", t.title);
+                  }}
                   aria-label={`Remove ${t.title}`}
                   className="rounded-lg p-1.5 text-fg-subtle hover:bg-rose-50 hover:text-rose-600"
                 >
@@ -141,10 +173,11 @@ export function SubjectSyllabusView({ slug }: { slug: string }) {
 
         <form
           className="mt-4 flex gap-2"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
             const title = draft.trim();
             if (title.length < 2) return;
+            if (!(await confirmAction({ title: "Add this topic?", description: `“${title}” · ${subject.name}, ${current}`, confirmLabel: "Add topic", rememberKey: `syllabus:${subject.name}` }))) return;
             save([...topics, { id: uid(), title: `${topics.length + 1}. ${title}`, status: "upcoming" }], "Topic added", title);
             setDraft("");
           }}

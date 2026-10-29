@@ -164,6 +164,7 @@ export function ExamAdmitCardsView({ slug }: { slug: string }) {
         open={Boolean(releasing)}
         onClose={() => setReleasing(null)}
         title={`Release ${releasing?.student.name}'s admit card?`}
+        tone="primary"
         description={`${formatTaka(releasing?.due ?? 0)} tuition is still due. The student can sit the exam; the due stays on their fee account.`}
         confirmLabel="Release"
         onConfirm={() => {

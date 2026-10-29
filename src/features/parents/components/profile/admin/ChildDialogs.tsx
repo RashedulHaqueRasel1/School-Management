@@ -14,6 +14,7 @@ import { StudentAvatar } from "@/features/admissions/components/StudentAvatar";
 import { normalizePhone } from "@/features/admissions/utils";
 import type { GuardianInfo, Student } from "@/features/students/types/types";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useGuardianActions } from "../../../hooks/use-guardian-actions";
@@ -181,7 +182,15 @@ export function UnlinkChildDialog({ parent, link, onClose }: { parent: Parent; l
           <Button
             variant="danger"
             disabled={only || reason.trim().length < 3}
-            onClick={() => {
+            onClick={async () => {
+              const ok = await confirmAction({
+                title: "Unlink this child?",
+                description: `${parent.name} stops being a guardian of ${link.student.name}.`,
+                confirmLabel: "Unlink",
+                tone: "danger",
+                typeToConfirm: link.student.name,
+              });
+              if (!ok) return;
               if (actions.unlink(parent, link, reason.trim())) toast("Child unlinked", { description: `${link.student.name} · ${parent.name}` });
               onClose();
             }}

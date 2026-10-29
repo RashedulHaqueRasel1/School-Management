@@ -18,6 +18,7 @@ import { formatFileSize, slugify, smsSegments, uid } from "@/features/admissions
 import { classOrder } from "@/features/classes/demoData/mock-data";
 import { addDaysIso } from "@/features/students/demoData/profile-data";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useNotices, type NoticeView } from "../hooks/use-notices";
@@ -78,13 +79,25 @@ export function NoticeForm({ notice }: { notice?: NoticeView }) {
   const segments = smsSegments(`${value.title}: ${value.body}`.slice(0, 300));
   const classes = [...CLASS_OPTIONS].sort((a, b) => classOrder(a) - classOrder(b));
 
-  function save(mode: "draft" | "publish") {
+  async function save(mode: "draft" | "publish") {
     if (value.title.trim().length < 5) return setError("Write a title (at least 5 characters).");
     if (value.body.trim().length < 10) return setError("Write the notice message.");
     if (!value.groups.length) return setError("Choose who should see it.");
     const scheduledAt = `${date}T${time}:00`;
     if (mode === "publish" && !live && when === "schedule" && scheduledAt <= nowIso()) return setError("Pick a future date and time, or publish now.");
     if (value.expiresOn && value.expiresOn < (live ? notice!.publishAt! : when === "schedule" ? scheduledAt : nowIso()).slice(0, 10)) return setError("The expiry date is before the notice goes live.");
+
+    const goingLive = mode === "publish" && !live;
+    const ok = await confirmAction({
+      title: mode === "draft" ? "Save as draft?" : live ? "Update this notice?" : when === "schedule" ? "Schedule this notice?" : "Publish this notice now?",
+      description: goingLive
+        ? `It goes to ${reach.total} people${value.sms ? ` · SMS to ${reach.phones} phones` : ""}${value.email ? " · email" : ""}.`
+        : live
+          ? "Changes appear on every portal right away."
+          : "It stays private until you publish it.",
+      confirmLabel: mode === "draft" ? "Save draft" : live ? "Update" : when === "schedule" ? "Schedule" : "Publish",
+    });
+    if (!ok) return;
 
     const publishAt = live ? notice!.publishAt : mode === "draft" ? null : when === "schedule" ? scheduledAt : nowIso();
     const data = { ...value, title: value.title.trim(), body: value.body.trim(), publishAt };

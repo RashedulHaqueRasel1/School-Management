@@ -317,6 +317,7 @@ export function AcademicsView({ slug }: { slug: string }) {
           toast("Subject removed", { description: removing.name, tone: "info" });
         }}
         title={`Remove ${removing?.name ?? "subject"}?`}
+        typeToConfirm={removing?.name}
         description="The subject and its teacher assignment are removed from this student's list. Exam results are not affected."
         confirmLabel="Remove"
       />

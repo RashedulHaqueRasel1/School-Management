@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useGuardianActions } from "../../hooks/use-guardian-actions";
@@ -25,9 +26,15 @@ export function EditParentView({ slug }: { slug: string }) {
       students={students}
       submitLabel="Save changes"
       cancelHref={parentHref(parent)}
-      onSubmit={(v) => {
+      onSubmit={async (v) => {
         const patch = { name: v.name, phone: v.phone, email: v.email, occupation: v.occupation, nid: v.nid };
         const changed = (Object.keys(patch) as (keyof typeof patch)[]).filter((k) => patch[k] !== parent[k]);
+        const ok = await confirmAction({
+          title: "Save guardian changes?",
+          description: `${changed.length ? `Changes: ${changed.join(", ")}. ` : ""}Applied to all ${parent.links.length} linked child(ren).`,
+          confirmLabel: "Save changes",
+        });
+        if (!ok) return;
         if (changed.length) actions.update(parent, patch, changed);
         const prefs = { address: v.address || undefined, preferredChannel: v.preferredChannel, language: v.language, notes: v.notes || undefined };
         if (v.address !== parent.address || v.preferredChannel !== profile.preferredChannel || v.language !== profile.language || (v.notes || undefined) !== profile.notes) {

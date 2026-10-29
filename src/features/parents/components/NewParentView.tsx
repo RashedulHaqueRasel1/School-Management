@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/PageHeader";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useGuardianActions } from "../hooks/use-guardian-actions";
@@ -32,7 +33,13 @@ export function NewParentView() {
         students={students}
         submitLabel="Save guardian"
         cancelHref="/parents"
-        onSubmit={(v, children, existing) => {
+        onSubmit={async (v, children, existing) => {
+          const ok = await confirmAction({
+            title: existing ? "Link children to this guardian?" : "Add this guardian?",
+            description: `${existing?.name ?? v.name} · ${v.phone} → ${children.length} child(ren). A portal login is created and the temporary password goes by SMS.`,
+            confirmLabel: existing ? "Link children" : "Add guardian",
+          });
+          if (!ok) return;
           const guardian = existing
             ? { ...existing }
             : { key: v.phone, name: v.name, phone: v.phone, email: v.email, occupation: v.occupation, nid: v.nid };

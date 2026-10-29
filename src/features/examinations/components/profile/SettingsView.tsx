@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { FormField } from "@/components/ui/form-field";
 import { Textarea } from "@/components/ui/textarea";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useExam } from "../../hooks/use-exam";
@@ -51,10 +52,12 @@ function SettingsForm({ exam }: { exam: ExamSummary }) {
   const reschedules = changed.some((k) => k === "startDate" || k === "classes" || k === "startTime" || k === "type");
   const locked = exam.status === "published";
 
-  function save() {
+  async function save() {
     const problem = validateExam(value);
     if (problem) return setError(problem);
     if (reschedules && exam.editedSchedule && action !== "reschedule") return setAction("reschedule");
+    // The reschedule dialog is already the confirmation for that path.
+    if (action !== "reschedule" && !(await confirmAction({ title: "Save exam settings?", description: `Changes: ${changed.join(", ")}.${reschedules ? " The routine is regenerated." : ""}`, confirmLabel: "Save changes" }))) return;
     saveSettings(exam.id, value, changed.join(", "), reschedules);
     toast("Exam updated", { description: reschedules ? "The routine was regenerated." : value.name });
     setAction(null);
@@ -95,7 +98,8 @@ function SettingsForm({ exam }: { exam: ExamSummary }) {
               <Button
                 variant="outline"
                 className="mt-3 w-full"
-                onClick={() => {
+                onClick={async () => {
+                  if (!(await confirmAction({ title: "Restore this exam?", description: `${exam.name} comes back with its routine and admit cards.`, confirmLabel: "Restore" }))) return;
                   restore(exam.id);
                   toast("Exam restored");
                 }}
@@ -161,6 +165,7 @@ function SettingsForm({ exam }: { exam: ExamSummary }) {
         onClose={() => setAction(null)}
         title={`Delete ${exam.name}?`}
         description="The exam, its routine, rooms and admit cards are removed. This cannot be undone."
+        typeToConfirm={exam.name}
         onConfirm={() => {
           remove(exam.id);
           toast("Exam deleted");
@@ -171,6 +176,7 @@ function SettingsForm({ exam }: { exam: ExamSummary }) {
         open={action === "reschedule"}
         onClose={() => setAction(null)}
         title="Regenerate the routine?"
+        tone="primary"
         description="You edited papers on the Schedule tab. These changes rebuild the routine and discard those edits."
         confirmLabel="Save & regenerate"
         onConfirm={save}

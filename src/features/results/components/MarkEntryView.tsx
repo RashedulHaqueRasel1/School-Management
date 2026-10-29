@@ -16,6 +16,7 @@ import { localToday } from "@/features/students/demoData/profile-data";
 import { useStudentAdminStore } from "@/features/students/store/student-admin.store";
 import { studentHref } from "@/features/students/utils";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useResults } from "../hooks/use-results";
@@ -96,7 +97,8 @@ function EntrySheet({ exam, column, rows }: { exam: ExamSummary; column: string;
   const bad = rows.filter(invalid);
   const filled = rows.filter((r) => parse(values[r.student.id] ?? "") !== undefined).length;
 
-  function save() {
+  async function save() {
+    if (!(await confirmAction({ title: "Save marks?", description: `${column} · ${changed.length} student(s) changed. Results and positions are recalculated.`, confirmLabel: "Save marks" }))) return;
     for (const r of changed) setMarks(r.student.id, exam.id, exam.name, { [subjectOf(r).code]: parse(values[r.student.id]!)! });
     toast("Marks saved", { description: `${column} · ${changed.length} student(s)` });
   }

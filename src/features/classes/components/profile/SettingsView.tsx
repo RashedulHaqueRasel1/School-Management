@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, BookOpen, CalendarCheck, CalendarDays, History, Settings2, UserRound, Users, type LucideIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Archive, BookOpen, Trash2, CalendarCheck, CalendarDays, History, Settings2, UserRound, Users, type LucideIcon } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/ui/badge";
@@ -13,12 +14,14 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/features/admissions/utils";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useSection } from "../../hooks/use-section";
 import { useClassAdminStore } from "../../store/class-admin.store";
 import type { ClassAuditCategory, SectionSettings } from "../../types/types";
 import { ClassTeacherDialog } from "./admin/SectionDialogs";
+import { deleteName } from "./SectionShell";
 
 const CATEGORY: Record<ClassAuditCategory, { label: string; icon: LucideIcon; accent: string }> = {
   settings: { label: "Settings", icon: Settings2, accent: "bg-soft text-fg-muted" },
@@ -39,6 +42,8 @@ function SettingsForm({ slug }: { slug: string }) {
   const { section, sections, teachers, audit } = useSection(slug);
   const saveSettings = useClassAdminStore((s) => s.saveSettings);
   const archive = useClassAdminStore((s) => s.archive);
+  const removeSection = useClassAdminStore((s) => s.removeSection);
+  const router = useRouter();
   const [v, setV] = useState<SectionSettings>(() => section!.settings);
   const [changingTeacher, setChangingTeacher] = useState(false);
   const [category, setCategory] = useState<ClassAuditCategory | "all">("all");
@@ -81,7 +86,9 @@ function SettingsForm({ slug }: { slug: string }) {
             <Button
               className="w-full"
               disabled={changed.length === 0 || v.capacity < 1 || !v.room.trim()}
-              onClick={() => {
+              onClick={async () => {
+                const ok = await confirmAction({ title: "Save section settings?", description: `Changes: ${changed.join(", ")}.`, confirmLabel: "Save changes" });
+                if (!ok) return;
                 saveSettings(section.key, v, "Settings updated", changed.map((k) => `${k}: ${section.settings[k] ?? "—"} → ${v[k] ?? "—"}`).join(" · "));
                 toast("Section updated", { description: changed.join(", ") });
               }}
@@ -119,13 +126,50 @@ function SettingsForm({ slug }: { slug: string }) {
             size="sm"
             className="mt-4 text-rose-600 dark:text-rose-400"
             disabled={section.students.length > 0 || section.archived}
-            onClick={() => {
+            onClick={async () => {
+              const ok = await confirmAction({
+                title: "Archive this section?",
+                description: "It's hidden from lists and pickers. History is kept and it can be restored.",
+                confirmLabel: "Archive",
+                tone: "danger",
+              });
+              if (!ok) return;
               archive(section.key, "Archived from settings");
               toast("Section archived");
             }}
           >
             {section.archived ? "Archived" : "Archive"}
           </Button>
+          {section.custom && (
+            <div className="mt-5 border-t border-line pt-4">
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-rose-600 dark:text-rose-400">
+                <Trash2 className="h-4 w-4" />
+                Delete section
+              </p>
+              <p className="mt-1 text-xs text-fg-muted">Added by mistake? Deletes it for good (only when empty). You&apos;ll be asked to type the section name.</p>
+              <Button
+                variant="danger"
+                size="sm"
+                className="mt-3"
+                disabled={section.students.length > 0}
+                onClick={async () => {
+                  const ok = await confirmAction({
+                    title: "Delete this section?",
+                    description: `${section.className} · Section ${section.section} — its room, settings and routine edits are removed for good.`,
+                    confirmLabel: "Delete section",
+                    tone: "danger",
+                    typeToConfirm: deleteName(section),
+                  });
+                  if (!ok) return;
+                  removeSection(section.key);
+                  toast("Section deleted", { description: deleteName(section) });
+                  router.push("/classes");
+                }}
+              >
+                Delete section
+              </Button>
+            </div>
+          )}
         </Card>
       </div>
 

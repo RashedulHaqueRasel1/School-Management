@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CURRENT_USER } from "@/features/admissions/constants";
 import { formatTaka } from "@/features/admissions/utils";
 import { localToday } from "@/features/students/demoData/profile-data";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useTeacherAdminStore } from "../../../store/teacher-admin.store";
@@ -39,8 +40,16 @@ export function ReleaseDialog({ teacher, salary, onClose }: { teacher: Teacher; 
   const [error, setError] = useState("");
   const [issued, setIssued] = useState<string | null>(null);
 
-  function submit() {
+  async function submit() {
     if (reason.trim().length < 3) return setError("Enter the reason.");
+    const ok = await confirmAction({
+      title: `Record ${type.toLowerCase()}?`,
+      description: `${teacher.name} moves to the Left list and loses portal access.`,
+      confirmLabel: `Record ${type.toLowerCase()}`,
+      tone: "danger",
+      typeToConfirm: teacher.name,
+    });
+    if (!ok) return;
     const certNo = `EXP-${teacher.id.split("-").pop()}-${lastWorkingDay.slice(0, 4)}`;
     release(teacher.id, {
       certNo,

@@ -16,6 +16,7 @@ import { useStudentAdminStore } from "@/features/students/store/student-admin.st
 import type { AttendanceStatus, Student } from "@/features/students/types/types";
 import { studentHref } from "@/features/students/utils";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useSection } from "../../hooks/use-section";
@@ -54,11 +55,25 @@ export function SectionAttendanceView({ slug }: { slug: string }) {
   }
   const allOff = rows.length > 0 && rows.every(off);
 
-  const mark = (student: Student, status: AttendanceStatus) =>
+  const save = (student: Student, status: AttendanceStatus) =>
     setAttendance(student.id, date, adminMark(status, preset, date), `${formatDate(date)} → ${ATTENDANCE_STYLE[status].label} (from ${section.className} ${section.section} register)`);
 
-  function markAllPresent() {
+  async function mark(student: Student, status: AttendanceStatus) {
+    const ok = await confirmAction({
+      title: `Mark ${ATTENDANCE_STYLE[status].label.toLowerCase()}?`,
+      description: `${student.name} · ${formatDate(date)}. Saved on the student's attendance and logged.`,
+      confirmLabel: `Mark ${ATTENDANCE_STYLE[status].label.toLowerCase()}`,
+      tone: status === "absent" ? "danger" : "primary",
+      rememberKey: `register:${section!.key}`,
+    });
+    if (ok) save(student, status);
+  }
+
+  async function markAllPresent() {
     const targets = rows.filter((r) => !off(r) && !r.day);
+    const ok = await confirmAction({ title: "Mark the rest present?", description: `${targets.length} unmarked student(s) · ${formatDate(date)}.`, confirmLabel: "Mark present" });
+    if (!ok) return;
+    for (const r of targets) save(r.student, "present");
     for (const r of targets) mark(r.student, "present");
     log(section!.key, "attendance", "Register: all present", `${formatDate(date)} · ${targets.length} student(s)`);
     toast("Marked present", { description: `${targets.length} student(s) · ${formatDate(date)}` });

@@ -309,6 +309,7 @@ function Details({ admission: a }: { admission: Admission }) {
         }}
         title="Delete this application?"
         description={`${a.studentName}'s application and message history will be permanently removed.`}
+        typeToConfirm={a.id}
       />
     </div>
   );

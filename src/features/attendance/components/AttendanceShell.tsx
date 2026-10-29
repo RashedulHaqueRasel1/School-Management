@@ -3,14 +3,13 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, BriefcaseBusiness, CalendarCheck, LayoutDashboard, type LucideIcon } from "lucide-react";
+import { BarChart3, BriefcaseBusiness, LayoutDashboard, type LucideIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { cn } from "@/lib/utils";
 
 const TABS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/attendance", label: "Daily overview", icon: LayoutDashboard },
-  { href: "/attendance/students", label: "Student register", icon: CalendarCheck },
   { href: "/attendance/staff", label: "Staff register", icon: BriefcaseBusiness },
   { href: "/attendance/reports", label: "Monthly reports", icon: BarChart3 },
 ];

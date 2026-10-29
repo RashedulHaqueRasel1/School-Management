@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { CURRENT_USER } from "@/features/admissions/constants";
 import { formatTaka } from "@/features/admissions/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { localToday } from "../../../demoData/profile-data";
@@ -49,9 +50,17 @@ export function IssueTCDialog({ student, tuition, onClose }: { student: Student;
   const [error, setError] = useState("");
   const [issued, setIssued] = useState<TransferRecord | null>(null);
 
-  function save() {
+  async function save() {
     if (dues > 0 && !waive) return setError(`Clear the dues of ${formatTaka(dues)} first, or waive them to continue.`);
     if (reason.startsWith("Transfer") && destination.trim().length < 3) return setError("Enter the school the student is moving to.");
+    const ok = await confirmAction({
+      title: "Issue the transfer certificate?",
+      description: `${student.name} will be marked "Left", removed from the class and archived.`,
+      confirmLabel: "Issue TC",
+      tone: "danger",
+      typeToConfirm: student.name,
+    });
+    if (!ok) return;
     const record: TransferRecord = {
       tcNo: tcNumberFor(student),
       issuedOn: localToday(),

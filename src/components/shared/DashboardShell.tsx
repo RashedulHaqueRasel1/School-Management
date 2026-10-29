@@ -1,9 +1,12 @@
 "use client";
 
+import { Suspense } from "react";
+
 import { HolidaySync } from "@/features/events/components/HolidaySync";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui.store";
 
+import { ConfirmHost } from "./ConfirmHost";
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 
@@ -26,6 +29,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <main className="mx-auto w-full max-w-[1600px] flex-1 p-4 sm:p-6 lg:p-8 print:p-0">
           {children}
         </main>
+        <Suspense fallback={null}>
+          <ConfirmHost />
+        </Suspense>
       </div>
     </div>
   );

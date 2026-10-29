@@ -10,7 +10,7 @@ Sent absence SMS are kept in `store/attendance.store.ts` (localStorage `attendan
 | Page | What it does |
 | --- | --- |
 | `/attendance` | Daily overview — rates, day breakdown, last 7 school days, sections still to mark, absent students (guardian SMS), staff away / late |
-| `/attendance/students` | Student register for one day, grouped by section — P / L / A / Lv, "mark rest present" |
+| ~~`/attendance/students`~~ | Removed — student registers are taken per section (`/classes/:slug/attendance`) |
 | `/attendance/staff` | Staff register for one day — same controls, filter by department |
 | `/attendance/reports` | Monthly report (students by section or staff), daily chart, below 85% list, CSV export |
 

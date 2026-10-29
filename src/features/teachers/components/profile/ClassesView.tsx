@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { localToday } from "@/features/students/demoData/profile-data";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { DAY_NAMES, MAX_PERIODS_PER_WEEK, PERIODS_PER_DAY, ROUTINE_DAYS, periodTime, seedAssignments } from "../../demoData/mock-data";
@@ -54,7 +55,9 @@ export function ClassesView({ slug }: { slug: string }) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
+                  onClick={async () => {
+                    const ok = await confirmAction({ title: "Reset class assignments?", description: `${teacher.name}'s classes go back to the default list. Your changes to this teacher's classes are lost.`, confirmLabel: "Reset", tone: "danger" });
+                    if (!ok) return;
                     setAssignments(teacher.id, seedAssignments(teacher), "Assignments reset to default");
                     toast("Assignments reset");
                   }}
@@ -207,6 +210,7 @@ export function ClassesView({ slug }: { slug: string }) {
         title="Remove this class?"
         description={removing ? `${removing.subject} · ${removing.className} ${removing.section} will be removed from ${teacher.name}'s routine.` : ""}
         confirmLabel="Remove"
+        typeToConfirm={removing ? `${removing.className} ${removing.section}` : undefined}
         onConfirm={() => {
           if (!removing) return;
           setAssignments(

@@ -15,6 +15,7 @@ import { summarize } from "@/features/students/components/profile/attendance-uti
 import { localToday } from "@/features/students/demoData/profile-data";
 import { studentHref } from "@/features/students/utils";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useSection } from "../../hooks/use-section";
@@ -59,7 +60,9 @@ export function SectionStudentsView({ slug }: { slug: string }) {
           {gaps && (
             <Button
               variant="outline"
-              onClick={() => {
+              onClick={async () => {
+                const ok = await confirmAction({ title: "Close roll gaps?", description: `Rolls become 1–${section.students.length} in the current order. Students see the new roll on their profiles.`, confirmLabel: "Renumber" });
+                if (!ok) return;
                 actions.renumber(section, "current");
                 toast("Roll gaps closed");
               }}
@@ -116,10 +119,21 @@ export function SectionStudentsView({ slug }: { slug: string }) {
                           min={1}
                           defaultValue={s.roll}
                           aria-label={`Roll of ${s.name}`}
-                          onBlur={(e) => {
-                            const roll = e.currentTarget.valueAsNumber;
+                          onBlur={async (e) => {
+                            const input = e.currentTarget;
+                            const roll = input.valueAsNumber;
                             if (!roll || roll < 1 || roll === s.roll) {
-                              e.currentTarget.value = String(s.roll);
+                              input.value = String(s.roll);
+                              return;
+                            }
+                            const holder = section.students.find((x) => x.roll === roll && x.id !== s.id);
+                            const ok = await confirmAction({
+                              title: "Change roll number?",
+                              description: `${s.name}: roll ${s.roll} → ${roll}.${holder ? ` ${holder.name} (roll ${roll}) gets roll ${s.roll}.` : ""}`,
+                              confirmLabel: "Change roll",
+                            });
+                            if (!ok) {
+                              input.value = String(s.roll);
                               return;
                             }
                             actions.setRoll(section, s, roll);

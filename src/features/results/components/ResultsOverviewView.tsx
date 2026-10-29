@@ -272,6 +272,7 @@ export function ResultsOverviewView() {
         open={Boolean(confirm)}
         onClose={() => setConfirm(null)}
         title={confirm === "publish" ? `Publish ${exam.name} results?` : `Unpublish ${exam.name} results?`}
+        tone={confirm === "publish" ? "primary" : "danger"}
         description={confirm === "publish" ? "Students and guardians can see their marks, GPA and position, and report cards can be printed." : "Results are hidden from students and guardians until you publish again."}
         confirmLabel={confirm === "publish" ? "Publish" : "Unpublish"}
         onConfirm={() => {

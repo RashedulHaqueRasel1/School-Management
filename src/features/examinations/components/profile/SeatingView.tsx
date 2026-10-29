@@ -228,6 +228,7 @@ export function ExamSeatingView({ slug }: { slug: string }) {
         open={Boolean(removing)}
         onClose={() => setRemoving(null)}
         title={`Remove ${removing?.name}?`}
+        typeToConfirm={removing?.name}
         description="Students seated there move to the next rooms."
         confirmLabel="Remove"
         onConfirm={() => {

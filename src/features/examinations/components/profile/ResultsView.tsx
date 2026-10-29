@@ -265,6 +265,7 @@ function PublishDialogs({
       open={Boolean(confirm)}
       onClose={() => setConfirm(null)}
       title={confirm === "publish" ? `Publish ${name} results?` : `Unpublish ${name} results?`}
+      tone={confirm === "publish" ? "primary" : "danger"}
       description={confirm === "publish" ? "Students and guardians will see their marks, GPA and position." : "Results are hidden from students and guardians until you publish again."}
       confirmLabel={confirm === "publish" ? "Publish" : "Unpublish"}
       onConfirm={() => {

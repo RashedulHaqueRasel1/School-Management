@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { localToday } from "@/features/students/demoData/profile-data";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useParent } from "../../hooks/use-parent";
@@ -74,7 +75,9 @@ export function ParentMeetingsView({ slug }: { slug: string }) {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => {
+                  onClick={async () => {
+                    const ok = await confirmAction({ title: "Cancel this meeting?", description: `${formatMeetingTime(m)} · ${m.studentName} with ${m.withWhom}.`, confirmLabel: "Cancel meeting", tone: "danger" });
+                    if (!ok) return;
                     updateMeeting(m, { status: "cancelled" }, "Meeting cancelled");
                     toast("Meeting cancelled", { description: formatMeetingTime(m) });
                   }}

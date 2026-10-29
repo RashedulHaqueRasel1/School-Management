@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { buttonStyles } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useAdmissionsHydrated, useAdmissionsStore } from "../store/admissions.store";
@@ -52,7 +53,8 @@ export function EditApplicationView({ slug }: { slug: string }) {
         initial={admission}
         submitLabel="Save changes"
         cancelHref={detailsHref}
-        onSubmit={(input) => {
+        onSubmit={async (input) => {
+          if (!(await confirmAction({ title: "Save application changes?", description: `${input.studentName}'s application is updated.`, confirmLabel: "Save changes" }))) return;
           const updated = update(admission.id, input);
           toast("Changes saved", { description: `${input.studentName}'s application was updated.` });
           // The URL contains the name, so it changes if the name was edited.

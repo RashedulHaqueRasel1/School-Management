@@ -22,6 +22,8 @@ type ClassAdminState = {
   saveSettings: (key: string, patch: Partial<SectionSettings>, action: string, detail?: string) => void;
   addSection: (className: string, section: string, settings: SectionSettings) => void;
   archive: (key: string, reason: string) => void;
+  /** Permanently delete an admin-created, empty section. */
+  removeSection: (key: string) => void;
   restore: (key: string) => void;
   setRoutineCell: (key: string, slot: string, cell: RoutineCell | undefined, detail: string) => void;
 };
@@ -70,6 +72,23 @@ export const useClassAdminStore = create<ClassAdminState>()(
       // BACKEND: POST /sections/:id/archive (only when empty)
       archive: (key, reason) =>
         set((s) => ({ archived: { ...s.archived, [key]: { reason, at: new Date().toISOString() } }, audit: [entry(key, "settings", "Section archived", reason), ...s.audit] })),
+
+      // BACKEND: DELETE /sections/:id (409 unless admin-created and empty)
+      removeSection: (key) =>
+        set((s) => {
+          const without = <T,>(record: Record<string, T>) => {
+            const next = { ...record };
+            delete next[key];
+            return next;
+          };
+          return {
+            added: s.added.filter((a) => `${a.className}::${a.section}` !== key),
+            sections: without(s.sections),
+            archived: without(s.archived),
+            routine: without(s.routine),
+            audit: [entry(key, "settings", "Section deleted"), ...s.audit],
+          };
+        }),
 
       restore: (key) =>
         set((s) => {

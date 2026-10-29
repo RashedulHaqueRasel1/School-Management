@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { PageHeader } from "@/components/shared/PageHeader";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useAdmissionsHydrated, useAdmissionsStore } from "../store/admissions.store";
@@ -30,7 +31,8 @@ export function NewApplicationView() {
       <AdmissionForm
         submitLabel="Submit application"
         cancelHref="/admissions"
-        onSubmit={(input) => {
+        onSubmit={async (input) => {
+          if (!(await confirmAction({ title: "Submit this application?", description: `${input.studentName} · ${input.applyingClass}. The guardian gets an SMS with the application ID.`, confirmLabel: "Submit application" }))) return;
           const created = add(input);
           toast("Application submitted", { description: `${created.studentName} · ${created.id} · confirmation SMS queued.` });
           router.push(admissionHref(created));

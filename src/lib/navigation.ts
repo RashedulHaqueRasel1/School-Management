@@ -38,8 +38,8 @@ export const navigation: NavGroup[] = [
     label: "People",
     items: [
       { title: "Admissions Management", href: "/admissions", icon: UserPlus },
-      { title: "Students", href: "/students", icon: GraduationCap },
       { title: "Teachers", href: "/teachers", icon: Users },
+      { title: "Students", href: "/students", icon: GraduationCap },
       { title: "Parents & Guardians", href: "/parents", icon: UsersRound },
     ],
   },
@@ -47,7 +47,7 @@ export const navigation: NavGroup[] = [
     label: "Academics",
     items: [
       { title: "Classes & Sections", href: "/classes", icon: School },
-      { title: "Subjects", href: "/subjects", icon: BookOpen },
+      // { title: "Subjects", href: "/subjects", icon: BookOpen },
       { title: "Attendance", href: "/attendance", icon: CalendarCheck },
       { title: "Examinations", href: "/examinations", icon: ClipboardList },
       { title: "Results", href: "/results", icon: Trophy },

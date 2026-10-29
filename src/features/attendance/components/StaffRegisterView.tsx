@@ -14,6 +14,7 @@ import { formatDate } from "@/features/admissions/utils";
 import { ATTENDANCE_STYLE, adminMark } from "@/features/students/components/profile/attendance-utils";
 import { useTeacherAdminStore } from "@/features/teachers/store/teacher-admin.store";
 import { teacherHref } from "@/features/teachers/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { countDay, dayOf, useSchoolAttendance } from "../hooks/use-school-attendance";
@@ -52,11 +53,23 @@ export function StaffRegisterView() {
   const counts = countDay(inDept, date);
   const unmarked = visible.filter((r) => !dayOf(r.days, date));
 
-  const mark = (r: StaffRow, s: MarkStatus) =>
+  const save = (r: StaffRow, s: MarkStatus) =>
     setAttendance(r.teacher.id, date, adminMark(s, r.shift, date), `${formatDate(date)} → ${ATTENDANCE_STYLE[s].label} (from staff register)`);
 
-  function markRestPresent() {
-    for (const r of unmarked) mark(r, "present");
+  async function mark(r: StaffRow, s: MarkStatus) {
+    const ok = await confirmAction({
+      title: `Mark ${ATTENDANCE_STYLE[s].label.toLowerCase()}?`,
+      description: `${r.teacher.name} · ${formatDate(date)}.`,
+      confirmLabel: `Mark ${ATTENDANCE_STYLE[s].label.toLowerCase()}`,
+      tone: s === "absent" ? "danger" : "primary",
+      rememberKey: "register:staff",
+    });
+    if (ok) save(r, s);
+  }
+
+  async function markRestPresent() {
+    if (!(await confirmAction({ title: "Mark the rest present?", description: `${unmarked.length} unmarked staff · ${formatDate(date)}.`, confirmLabel: "Mark present" }))) return;
+    for (const r of unmarked) save(r, "present");
     toast("Marked present", { description: `${unmarked.length} staff · ${formatDate(date)}` });
   }
 

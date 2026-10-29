@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card";
 import { CURRENT_USER, SCHOOL_INFO } from "@/features/admissions/constants";
 import { formatDate, formatDateTime, formatFileSize, uid } from "@/features/admissions/utils";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { useNotices, type NoticeView } from "../hooks/use-notices";
@@ -59,7 +60,8 @@ function Detail({ notice: n, now, slugs }: { notice: NoticeView; now: string; sl
   const went = n.status === "published" || n.status === "expired" || n.status === "archived";
   const rate = n.reach.total ? Math.round((n.seen / n.reach.total) * 100) : 0;
 
-  function duplicate() {
+  async function duplicate() {
+    if (!(await confirmAction({ title: "Duplicate this notice?", description: "A copy is saved as a draft for you to edit.", confirmLabel: "Duplicate" }))) return;
     let slug = `${n.slug}-copy`;
     while (slugs.includes(slug)) slug = `${n.slug}-copy-${uid().slice(0, 3).toLowerCase()}`;
     const at = new Date().toISOString();
@@ -69,12 +71,31 @@ function Detail({ notice: n, now, slugs }: { notice: NoticeView; now: string; sl
   }
 
   const actions: { label: string; icon: LucideIcon; onClick: () => void; danger?: boolean; hidden?: boolean }[] = [
-    { label: n.pinned ? "Unpin" : "Pin to top", icon: n.pinned ? PinOff : Pin, onClick: () => (update(n.id, { pinned: !n.pinned }), toast(n.pinned ? "Unpinned" : "Pinned to the top")), hidden: n.archived },
+    {
+      label: n.pinned ? "Unpin" : "Pin to top",
+      icon: n.pinned ? PinOff : Pin,
+      onClick: async () => {
+        if (!(await confirmAction({ title: n.pinned ? "Unpin this notice?" : "Pin to the top?", description: n.pinned ? "It goes back to its normal place on the notice board." : "It stays above all other notices on every portal.", confirmLabel: n.pinned ? "Unpin" : "Pin" }))) return;
+        update(n.id, { pinned: !n.pinned });
+        toast(n.pinned ? "Unpinned" : "Pinned to the top");
+      },
+      hidden: n.archived,
+    },
     { label: "Duplicate", icon: Copy, onClick: duplicate },
     {
       label: n.archived ? "Restore" : "Archive",
       icon: n.archived ? ArchiveRestore : Archive,
-      onClick: () => (update(n.id, { archived: !n.archived, pinned: false }), toast(n.archived ? "Notice restored" : "Notice archived", { description: n.archived ? undefined : "Removed from the portal board." })),
+      onClick: async () => {
+        const ok = await confirmAction({
+          title: n.archived ? "Restore this notice?" : "Archive this notice?",
+          description: n.archived ? "It returns to the notice list." : "It's removed from the portal board but kept in the archive.",
+          confirmLabel: n.archived ? "Restore" : "Archive",
+          tone: n.archived ? "primary" : "danger",
+        });
+        if (!ok) return;
+        update(n.id, { archived: !n.archived, pinned: false });
+        toast(n.archived ? "Notice restored" : "Notice archived", { description: n.archived ? undefined : "Removed from the portal board." });
+      },
     },
     { label: "Delete", icon: Trash2, onClick: () => setConfirm("delete"), danger: true },
   ];
@@ -243,6 +264,7 @@ function Detail({ notice: n, now, slugs }: { notice: NoticeView; now: string; sl
         open={confirm === "delete"}
         onClose={() => setConfirm(null)}
         title="Delete this notice?"
+        typeToConfirm={n.id}
         description={went ? "It disappears from every portal. Archive it instead to keep a record." : "The notice is removed. This cannot be undone."}
         onConfirm={() => {
           remove(n.id);
@@ -254,6 +276,7 @@ function Detail({ notice: n, now, slugs }: { notice: NoticeView; now: string; sl
         open={confirm === "publish"}
         onClose={() => setConfirm(null)}
         title="Publish now?"
+        tone="primary"
         description={`It goes live for ${n.reach.total} people${n.sms ? ` and an SMS goes to ${n.reach.phones} phones` : ""}.`}
         confirmLabel="Publish"
         onConfirm={() => {

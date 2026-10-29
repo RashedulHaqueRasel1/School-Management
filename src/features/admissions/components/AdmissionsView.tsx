@@ -236,6 +236,7 @@ export function AdmissionsView() {
         onClose={() => setPendingDelete(null)}
         onConfirm={confirmDelete}
         title={pendingDelete?.length === 1 ? "Delete this application?" : `Delete ${pendingDelete?.length ?? 0} applications?`}
+        typeToConfirm={pendingDelete?.length === 1 ? pendingDelete[0] : `DELETE ${pendingDelete?.length ?? 0}`}
         description={
           deleteTargetName
             ? `${deleteTargetName}'s application will be permanently removed. This can't be undone.`
@@ -255,6 +256,7 @@ export function AdmissionsView() {
           toast("Demo data restored", { tone: "info" });
         }}
         title="Reset demo data?"
+        typeToConfirm="RESET"
         description="Demo only — all changes you made (applications, payments, status changes) are replaced with the original demo data. This button will not exist once the real backend is connected."
         confirmLabel="Reset"
       />

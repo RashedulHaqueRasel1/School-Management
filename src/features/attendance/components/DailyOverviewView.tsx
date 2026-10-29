@@ -15,6 +15,7 @@ import { WEEKDAY_NAMES, addDaysIso, weekdayOf } from "@/features/students/demoDa
 import { studentHref } from "@/features/students/utils";
 import { teacherHref } from "@/features/teachers/utils";
 import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm.store";
 import { toast } from "@/store/toast.store";
 
 import { countDay, dayOf, useSchoolAttendance, type DayCounts } from "../hooks/use-school-attendance";
@@ -61,7 +62,8 @@ export function DailyOverviewView() {
     .map((r) => ({ ...r, day: dayOf(r.days, date) }))
     .filter((r) => r.day && (r.day.status === "absent" || r.day.status === "late" || r.day.status === "leave"));
 
-  function sendAlerts() {
+  async function sendAlerts() {
+    if (!(await confirmAction({ title: "Send absence SMS?", description: `${toAlert.length} guardian(s) get an SMS about ${formatDate(date)}.`, confirmLabel: `Send ${toAlert.length} SMS` }))) return;
     markAlerted(toAlert.map((r) => alertKey(r.student.id)));
     toast("Absence SMS sent", { description: `${toAlert.length} guardian(s) · ${formatDate(date)}` });
   }
@@ -76,9 +78,9 @@ export function DailyOverviewView() {
   return (
     <div className="space-y-6">
       <DateBar date={date} today={today} onChange={setDate}>
-        <Link href="/attendance/students" className="inline-flex h-10 items-center gap-2 rounded-xl bg-linear-to-b from-indigo-500 to-indigo-600 px-4 text-sm font-semibold text-white shadow-glow hover:from-indigo-500 hover:to-indigo-500">
+        <Link href="/classes" className="inline-flex h-10 items-center gap-2 rounded-xl bg-linear-to-b from-indigo-500 to-indigo-600 px-4 text-sm font-semibold text-white shadow-glow hover:from-indigo-500 hover:to-indigo-500">
           <ClipboardList className="h-4 w-4" />
-          Take register
+          Section registers
         </Link>
       </DateBar>
 
