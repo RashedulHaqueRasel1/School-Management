@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
 
-import { ModulePlaceholder } from "@/components/shared/ModulePlaceholder";
+import { SettingsView } from "@/features/settings/components/SettingsView";
 
 export const metadata: Metadata = { title: "Settings" };
 
 export default function SettingsPage() {
-  return (
-    <ModulePlaceholder
-      title="Settings"
-      description="Configure school profile, academic year, roles and permissions."
-    />
-  );
+  return <SettingsView />;
 }
